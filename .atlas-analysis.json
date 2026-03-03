@@ -1,0 +1,153 @@
+{
+  "projectType": "api-service",
+  "projectName": "E-commerce API",
+  "projectDescription": "A RESTful API for e-commerce platforms with product management, shopping cart, orders, and payment integration",
+  "theme": "sequoia",
+  "primaryColor": "#6366f1",
+  "lightColor": "#818cf8",
+  "darkColor": "#4f46e5",
+  "navigation": {
+    "tabs": [
+      {
+        "tab": "Documentation",
+        "groups": [
+          {
+            "group": "Getting Started",
+            "pages": [
+              "introduction",
+              "quickstart",
+              "installation"
+            ]
+          },
+          {
+            "group": "Authentication",
+            "pages": [
+              "auth/overview",
+              "auth/registration",
+              "auth/tokens",
+              "auth/permissions"
+            ]
+          },
+          {
+            "group": "Core Concepts",
+            "pages": [
+              "concepts/architecture",
+              "concepts/data-models",
+              "concepts/filtering-pagination"
+            ]
+          }
+        ]
+      },
+      {
+        "tab": "API Reference",
+        "groups": [
+          {
+            "group": "Products",
+            "pages": [
+              "api/products/list-products",
+              "api/products/get-product",
+              "api/products/categories",
+              "api/products/variants",
+              "api/products/reviews"
+            ]
+          },
+          {
+            "group": "Shopping Cart",
+            "pages": [
+              "api/cart/get-cart",
+              "api/cart/manage-items",
+              "api/cart/apply-voucher"
+            ]
+          },
+          {
+            "group": "Orders",
+            "pages": [
+              "api/orders/list-orders",
+              "api/orders/get-order",
+              "api/orders/create-order",
+              "api/orders/update-order",
+              "api/orders/cancel-order"
+            ]
+          },
+          {
+            "group": "Payments",
+            "pages": [
+              "api/payments/checkout",
+              "api/payments/process-payment"
+            ]
+          },
+          {
+            "group": "Customers",
+            "pages": [
+              "api/customers/create-customer",
+              "api/customers/get-customer",
+              "api/customers/update-customer"
+            ]
+          },
+          {
+            "group": "Discounts",
+            "pages": [
+              "api/discounts/offers",
+              "api/discounts/vouchers"
+            ]
+          },
+          {
+            "group": "Stores",
+            "pages": [
+              "api/stores/list-stores",
+              "api/stores/get-store"
+            ]
+          },
+          {
+            "group": "Wishlists",
+            "pages": [
+              "api/wishlists/list-wishlists",
+              "api/wishlists/get-wishlist",
+              "api/wishlists/manage-wishlist"
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "keyFeatures": [
+    "JWT Authentication & Authorization",
+    "Product Catalog with Variants & Reviews",
+    "Shopping Cart Management",
+    "Order Processing & Tracking",
+    "Braintree Payment Integration",
+    "Flexible Discount System (Offers & Vouchers)",
+    "Multi-Vendor Support",
+    "Wishlist Functionality",
+    "Advanced Filtering & Pagination",
+    "Interactive Swagger Documentation"
+  ],
+  "publicApiSurface": [
+    "POST /auth/token/",
+    "POST /auth/token/refresh/",
+    "POST /auth/logout/",
+    "GET /api/v1/products/",
+    "GET /api/v1/products/{id}/",
+    "GET /api/v1/categories/",
+    "GET /api/v1/products/{id}/reviews/",
+    "POST /api/v1/products/{id}/reviews/",
+    "GET /api/v1/cart/",
+    "POST /api/v1/cart/items/",
+    "DELETE /api/v1/cart/items/",
+    "POST /api/v1/cart/apply/vouchers/",
+    "GET /api/v1/i/orders/",
+    "GET /api/v1/i/orders/{id}/",
+    "POST /api/v1/i/orders/",
+    "PUT /api/v1/i/orders/{id}/",
+    "DELETE /api/v1/i/orders/{id}/",
+    "GET /api/v1/payments/checkout/order/{id}/",
+    "POST /api/v1/payments/checkout/order/{id}/",
+    "POST /api/v1/customers/",
+    "GET /api/v1/customers/{id}/",
+    "GET /api/v1/offers/",
+    "GET /api/v1/stores/",
+    "GET /api/v1/stores/{id}/",
+    "GET /api/v1/wishlists/",
+    "GET /api/v1/wishlists/{id}/"
+  ]
+}
