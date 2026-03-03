@@ -1,0 +1,170 @@
+---
+title: 'Update Store'
+api: 'PUT /api/v1/stores/{slug}/'
+description: 'Update store information (owner only)'
+---
+
+This endpoint allows store owners to update their store's brand name and description. Only the store owner can update their own store.
+
+## Authentication
+
+**Required**: Bearer token in `Authorization` header
+
+**Permission**: You must be the owner of the store (VendorOnly permission)
+
+## Path Parameters
+
+<ParamField path="slug" type="string" required>
+  The URL slug of the store to update (derived from brand_name)
+</ParamField>
+
+## Request Body
+
+<ParamField body="brand_name" type="string">
+  Updated brand name for the store. If omitted, keeps current value.
+</ParamField>
+
+<ParamField body="about" type="string">
+  Updated description of the store. If omitted, keeps current value.
+</ParamField>
+
+<Note>
+  Both fields are optional in the update request. Only include fields you want to change.
+</Note>
+
+## Response
+
+Returns the updated store object:
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the store
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Hyperlinked URL to the store detail endpoint (uses slug)
+</ResponseField>
+
+<ResponseField name="brand_name" type="string">
+  The store's brand name
+</ResponseField>
+
+<ResponseField name="about" type="string">
+  Description of the store
+</ResponseField>
+
+<ResponseField name="products_sold" type="integer">
+  Total number of products sold by this store
+</ResponseField>
+
+<ResponseField name="owner" type="integer">
+  Customer ID of the store owner
+</ResponseField>
+
+<ResponseField name="followers" type="array">
+  Array of customer IDs following this store
+</ResponseField>
+
+## Example Request
+
+```bash cURL
+curl -X PUT http://localhost:8000/api/v1/stores/tech-gadgets-pro/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "about": "Premium electronics, accessories, and smart home devices for tech enthusiasts"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/v1/stores/tech-gadgets-pro/"
+headers = {
+    "Authorization": "Bearer YOUR_ACCESS_TOKEN",
+    "Content-Type": "application/json"
+}
+data = {
+    "about": "Premium electronics, accessories, and smart home devices for tech enthusiasts"
+}
+
+response = requests.put(url, headers=headers, json=data)
+print(response.json())
+```
+
+## Example Response
+
+```json
+{
+  "id": 5,
+  "url": "http://localhost:8000/api/v1/stores/tech-gadgets-pro/",
+  "brand_name": "Tech Gadgets Pro",
+  "about": "Premium electronics, accessories, and smart home devices for tech enthusiasts",
+  "products_sold": 47,
+  "owner": 42,
+  "followers": [15, 23, 108]
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+Returned when brand name conflicts with another store:
+
+```json
+{
+  "brand_name": ["store with this brand name already exists."]
+}
+```
+
+### 401 Unauthorized
+
+Returned when authentication token is missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+### 403 Forbidden
+
+Returned when you try to update a store you don't own:
+
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+### 404 Not Found
+
+Returned when the store slug doesn't exist:
+
+```json
+{
+  "detail": "Not found."
+}
+```
+
+## Business Rules
+
+- Only the store owner can update their store
+- Brand name changes will update the URL slug
+- Changing the brand name does not affect existing product associations
+- Products sold count and follower list cannot be directly modified through this endpoint
+
+<Warning>
+  Changing the brand name will change the store's URL slug. Update any bookmarks or links accordingly.
+</Warning>
+
+## Related Endpoints
+
+- [Get Store](/api/stores/get-store) - View current store details
+- [Create Store](/api/stores/create-store) - Create a new store
+- [Delete Store](/api/stores/delete-store) - Remove store from platform
+- [List Stores](/api/stores/list-stores) - Browse all stores
+
+## Code Reference
+
+Implementation: `~/workspace/source/stores/views.py:68-76`

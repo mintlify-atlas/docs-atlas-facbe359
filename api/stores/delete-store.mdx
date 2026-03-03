@@ -1,0 +1,125 @@
+---
+title: 'Delete Store'
+api: 'DELETE /api/v1/stores/{slug}/'
+description: 'Permanently delete a store and revoke vendor status'
+---
+
+This endpoint allows store owners to permanently delete their store from the platform. This action also revokes the owner's vendor status and staff permissions.
+
+## Authentication
+
+**Required**: Bearer token in `Authorization` header
+
+**Permission**: You must be the owner of the store (VendorOnly permission)
+
+## Path Parameters
+
+<ParamField path="slug" type="string" required>
+  The URL slug of the store to delete (derived from brand_name)
+</ParamField>
+
+## Response
+
+Returns HTTP 204 No Content on successful deletion.
+
+## Example Request
+
+```bash cURL
+curl -X DELETE http://localhost:8000/api/v1/stores/tech-gadgets-pro/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/v1/stores/tech-gadgets-pro/"
+headers = {
+    "Authorization": "Bearer YOUR_ACCESS_TOKEN"
+}
+
+response = requests.delete(url, headers=headers)
+print(f"Status Code: {response.status_code}")
+```
+
+## Example Response
+
+**Status**: 204 No Content
+
+No response body is returned on successful deletion.
+
+## Error Responses
+
+### 401 Unauthorized
+
+Returned when authentication token is missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+### 403 Forbidden
+
+Returned when you try to delete a store you don't own:
+
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+### 404 Not Found
+
+Returned when the store slug doesn't exist:
+
+```json
+{
+  "detail": "Not found."
+}
+```
+
+## What Happens When You Delete a Store
+
+When a store is deleted, the following actions occur automatically:
+
+1. **Store Record**: The store record is permanently removed from the database
+2. **Vendor Status**: The owner's `is_vendor` flag is set to `false`
+3. **Staff Status**: The owner's `is_staff` flag is set to `false`
+4. **Products**: All products associated with the store are also deleted (cascade delete)
+5. **Followers**: Store followers lose their connection to the store
+
+<Warning>
+  This action is **irreversible**. All store data, including products, will be permanently deleted. Consider exporting your data before deletion.
+</Warning>
+
+## Business Rules
+
+- Only the store owner can delete their own store
+- Deleting a store automatically removes vendor and staff permissions
+- All products listed under the store are deleted via cascade
+- Active orders containing products from the deleted store may retain product information
+- The customer account itself is not deleted, only downgraded to regular customer status
+
+## After Deletion
+
+After deleting your store:
+- You can create a new store at any time (becoming a vendor again)
+- Your customer account remains active
+- Your order history is preserved
+- You lose access to vendor-specific features
+
+<Info>
+  If you want to temporarily pause your store operations without deleting it, consider marking all products as unavailable instead.
+</Info>
+
+## Related Endpoints
+
+- [Create Store](/api/stores/create-store) - Create a new store (after deletion)
+- [Update Store](/api/stores/update-store) - Modify store information
+- [Get Store](/api/stores/get-store) - View store details
+- [List Stores](/api/stores/list-stores) - Browse all stores
+
+## Code Reference
+
+Implementation: `~/workspace/source/stores/views.py:78-83`

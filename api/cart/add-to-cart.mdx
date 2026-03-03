@@ -1,0 +1,210 @@
+---
+title: "Add to Cart"
+api: "POST /api/v1/cart/"
+description: "Add a product variant to the shopping cart"
+---
+
+Add a product to the shopping cart by specifying the variant SKU and desired quantity. The cart automatically applies any eligible offers and calculates pricing with discounts.
+
+## Authentication
+
+Not required - cart is session-based
+
+## Request Body
+
+<ParamField body="variant_sku" type="string" required>
+  The SKU of the product variant to add (e.g., "2f23232242f2f3f")
+</ParamField>
+
+<ParamField body="quantity" type="integer" required>
+  Number of units to add. Must be positive.
+</ParamField>
+
+## Response
+
+Returns a success message with the updated cart total:
+
+<ResponseField name="success" type="string">
+  Confirmation message describing what was added
+</ResponseField>
+
+<ResponseField name="cart_total" type="number">
+  Updated total value of the entire cart after adding this item
+</ResponseField>
+
+## Example Request
+
+```bash cURL
+curl -X POST http://localhost:8000/api/v1/cart/ \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=your_session_id" \
+  -d '{
+    "variant_sku": "2f23232242f2f3f",
+    "quantity": 2
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/v1/cart/"
+headers = {
+    "Content-Type": "application/json"
+}
+cookies = {
+    "sessionid": "your_session_id"
+}
+data = {
+    "variant_sku": "2f23232242f2f3f",
+    "quantity": 2
+}
+
+response = requests.post(url, headers=headers, cookies=cookies, json=data)
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:8000/api/v1/cart/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  credentials: 'include', // Include session cookie
+  body: JSON.stringify({
+    variant_sku: '2f23232242f2f3f',
+    quantity: 2
+  })
+});
+
+const data = await response.json();
+console.log(data);
+```
+
+## Example Response
+
+```json 200 OK
+{
+  "success": "2x Wireless Headphones - Black has been added",
+  "cart_total": 192.97
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+Returned when required fields are missing or invalid:
+
+```json
+{
+  "variant_sku": ["This field is required."],
+  "quantity": ["Ensure this value is greater than or equal to 1."]
+}
+```
+
+### 404 Not Found
+
+Returned when the variant SKU doesn't exist or is inactive:
+
+```json
+{
+  "variant": ["Product variant not found or is no longer available."]
+}
+```
+
+### 400 Insufficient Stock
+
+Returned when requested quantity exceeds available stock:
+
+```json
+{
+  "quantity": ["Only 3 units available in stock."]
+}
+```
+
+## How Adding Works
+
+When you add an item to the cart:
+
+<Steps>
+  <Step title="Variant Validation">
+    The system validates the variant exists, is active, and has sufficient stock
+  </Step>
+  
+  <Step title="Duplicate Check">
+    If the same variant already exists in cart, quantities are merged
+  </Step>
+  
+  <Step title="Offer Application">
+    Eligible automatic offers are applied to calculate discounted pricing
+  </Step>
+  
+  <Step title="Cart Update">
+    Item is added/updated in the session cart with current pricing
+  </Step>
+  
+  <Step title="Total Calculation">
+    Cart totals are recalculated including shipping and all discounts
+  </Step>
+</Steps>
+
+## Automatic Features
+
+### Offer Application
+
+When adding items, the system automatically:
+- Checks for active product-level offers
+- Validates offer conditions (customer eligibility, time windows)
+- Applies the best available discount
+- Stores offer information with the cart item
+
+### Stock Validation
+
+The cart ensures:
+- Variant is currently active and available
+- Requested quantity doesn't exceed stock level
+- If item already in cart, combined quantity is within stock limits
+
+### Price Locking
+
+When added to cart:
+- Current price is captured at add time
+- Original price (before offers) is stored for comparison
+- Prices are refreshed every 5 minutes to reflect current offers
+- Expired offers are automatically removed on refresh
+
+## Session Management
+
+The shopping cart is session-based:
+- **No authentication required** to add items
+- Session cookie (`sessionid`) is automatically created
+- Cart data persists for 30 minutes of inactivity
+- Adding items refreshes the session timeout
+
+<Note>
+  If a customer logs in after adding items to their cart, the session cart is preserved and can be converted to an order upon checkout.
+</Note>
+
+## Business Rules
+
+- Minimum quantity: 1 unit
+- Maximum quantity: Limited by available stock for that variant
+- Duplicate items: Quantities are combined (not separate line items)
+- Inactive variants: Cannot be added to cart
+- Stock validation: Performed at add time and during cart refresh
+
+<Info>
+  For updating quantities of items already in the cart, use the [Update Cart Items](/api/cart/manage-items) endpoint instead.
+</Info>
+
+## Related Endpoints
+
+- [Get Cart](/api/cart/get-cart) - View current cart contents and totals
+- [Update Cart Items](/api/cart/manage-items) - Change quantities or remove items
+- [Apply Voucher](/api/cart/apply-voucher) - Apply voucher code for additional discounts
+- [Clear Cart](/api/cart/get-cart#clear-cart) - Empty the entire cart
+- [Create Order](/api/orders/create-order) - Convert cart to an order
+
+## Code Reference
+
+Implementation: `~/workspace/source/cart/views.py:65-79`

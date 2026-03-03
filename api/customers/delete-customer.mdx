@@ -1,0 +1,170 @@
+---
+title: 'Delete Customer Account'
+api: 'DELETE /api/v1/customers/{id}/'
+description: 'Deactivate a customer account (soft delete)'
+---
+
+This endpoint allows customers to deactivate their own account. This is a soft delete operation that sets the account's `is_active` flag to `false`, preserving historical data while preventing login.
+
+## Authentication
+
+**Required**: Bearer token in `Authorization` header
+
+**Permission**: You can only delete your own customer account (CustomerOnly permission)
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The customer ID to deactivate. Must match the authenticated user's ID.
+</ParamField>
+
+## Response
+
+Returns HTTP 204 No Content on successful deactivation.
+
+## Example Request
+
+```bash cURL
+curl -X DELETE http://localhost:8000/api/v1/customers/42/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/v1/customers/42/"
+headers = {
+    "Authorization": "Bearer YOUR_ACCESS_TOKEN"
+}
+
+response = requests.delete(url, headers=headers)
+print(f"Status Code: {response.status_code}")
+```
+
+```javascript JavaScript
+const response = await fetch('http://localhost:8000/api/v1/customers/42/', {
+  method: 'DELETE',
+  headers: {
+    'Authorization': 'Bearer YOUR_ACCESS_TOKEN'
+  }
+});
+
+console.log(`Status: ${response.status}`);
+```
+
+## Example Response
+
+**Status**: 204 No Content
+
+No response body is returned on successful deactivation.
+
+## Error Responses
+
+### 401 Unauthorized
+
+Returned when authentication token is missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+### 403 Forbidden
+
+Returned when you try to delete another customer's account:
+
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+### 404 Not Found
+
+Returned when the customer ID doesn't exist:
+
+```json
+{
+  "detail": "Not found."
+}
+```
+
+## Soft Delete Behavior
+
+This endpoint implements a **soft delete** pattern:
+
+<AccordionGroup>
+  <Accordion title="What is preserved?">
+    - Customer record remains in database
+    - Order history is retained
+    - Product reviews remain visible
+    - Address information is kept
+    - Purchase history is accessible
+  </Accordion>
+
+  <Accordion title="What changes?">
+    - `is_active` flag is set to `false`
+    - Account cannot log in
+    - Account excluded from active customer queries
+    - Cart session is preserved but inaccessible
+  </Accordion>
+
+  <Accordion title="What about vendor stores?">
+    If the customer owns a store:
+    - The store remains active (not automatically deleted)
+    - Store products remain listed
+    - To fully remove presence, delete the store first using [Delete Store](/api/stores/delete-store)
+  </Accordion>
+</AccordionGroup>
+
+## Business Rules
+
+- Customers can only delete their own account
+- This is a soft delete - the account is marked inactive rather than removed
+- Historical data (orders, reviews) is preserved for business records
+- The customer's email remains reserved and cannot be reused for new registrations
+- If the customer owns a store, the store is NOT automatically deleted
+
+<Warning>
+  While this is a soft delete, account reactivation is not currently supported through the API. Contact support if you need to reactivate a deactivated account.
+</Warning>
+
+## Recommended Deletion Workflow
+
+If you're a vendor with a store, follow this order:
+
+<Steps>
+  <Step title="Delete your store">
+    First delete your store using [DELETE /api/v1/stores/{slug}/](/api/stores/delete-store)
+  </Step>
+  <Step title="Clear personal data">
+    Optionally update your customer profile to remove personal information
+  </Step>
+  <Step title="Deactivate account">
+    Finally, delete your customer account using this endpoint
+  </Step>
+</Steps>
+
+## Data Retention Policy
+
+Deactivated accounts are retained for:
+- **Order records**: Indefinitely (required for business compliance)
+- **Product reviews**: Indefinitely (remain visible with attribution)
+- **Personal information**: Subject to data retention policies and GDPR requests
+- **Login credentials**: Authentication is disabled, tokens are invalidated
+
+<Info>
+  For GDPR or complete data deletion requests, please contact the platform administrator directly. Soft delete does not constitute full data erasure.
+</Info>
+
+## Related Endpoints
+
+- [Get Customer](/api/customers/get-customer) - View customer account details
+- [Update Customer](/api/customers/update-customer) - Modify account information
+- [Create Customer](/api/customers/create-customer) - Register a new account
+- [Delete Store](/api/stores/delete-store) - Delete vendor store (if applicable)
+
+## Code Reference
+
+Implementation: `~/workspace/source/customers/views.py:70-73`

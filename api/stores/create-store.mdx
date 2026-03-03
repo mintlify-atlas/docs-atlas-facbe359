@@ -1,0 +1,150 @@
+---
+title: 'Create Store'
+api: 'POST /api/v1/stores/'
+description: 'Create a new vendor store on the platform'
+---
+
+This endpoint allows authenticated users to create a new store and become a vendor on the platform. When a store is created, the customer's account is automatically upgraded to vendor status with staff permissions.
+
+## Authentication
+
+**Required**: Bearer token in `Authorization` header
+
+The authenticated user automatically becomes the owner of the new store.
+
+## Request Body
+
+<ParamField body="brand_name" type="string" required>
+  Unique brand name for the store (used in URL slug)
+</ParamField>
+
+<ParamField body="about" type="string" required>
+  Description of the store and what it sells
+</ParamField>
+
+## Response
+
+Returns the created store object with the following fields:
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the store
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Hyperlinked URL to the store detail endpoint (uses slug)
+</ResponseField>
+
+<ResponseField name="brand_name" type="string">
+  The store's brand name
+</ResponseField>
+
+<ResponseField name="about" type="string">
+  Description of the store
+</ResponseField>
+
+<ResponseField name="products_sold" type="integer">
+  Total number of products sold by this store (starts at 0)
+</ResponseField>
+
+<ResponseField name="owner" type="integer">
+  Customer ID of the store owner
+</ResponseField>
+
+<ResponseField name="followers" type="array">
+  Array of customer IDs following this store
+</ResponseField>
+
+## Example Request
+
+```bash cURL
+curl -X POST http://localhost:8000/api/v1/stores/ \
+  -H "Authorization: Bearer YOUR_ACCESS_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "brand_name": "Tech Gadgets Pro",
+    "about": "Premium electronics and accessories for tech enthusiasts"
+  }'
+```
+
+```python Python
+import requests
+
+url = "http://localhost:8000/api/v1/stores/"
+headers = {
+    "Authorization": "Bearer YOUR_ACCESS_TOKEN",
+    "Content-Type": "application/json"
+}
+data = {
+    "brand_name": "Tech Gadgets Pro",
+    "about": "Premium electronics and accessories for tech enthusiasts"
+}
+
+response = requests.post(url, headers=headers, json=data)
+print(response.json())
+```
+
+## Example Response
+
+```json
+{
+  "id": 5,
+  "url": "http://localhost:8000/api/v1/stores/tech-gadgets-pro/",
+  "brand_name": "Tech Gadgets Pro",
+  "about": "Premium electronics and accessories for tech enthusiasts",
+  "products_sold": 0,
+  "owner": 42,
+  "followers": []
+}
+```
+
+## Error Responses
+
+### 400 Bad Request
+
+Returned when required fields are missing or brand name is not unique:
+
+```json
+{
+  "brand_name": ["store with this brand name already exists."],
+  "about": ["This field is required."]
+}
+```
+
+### 401 Unauthorized
+
+Returned when authentication token is missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+## Automatic Account Upgrade
+
+When you create a store, your customer account is automatically upgraded:
+- `is_vendor` flag is set to `true`
+- `is_staff` flag is set to `true`
+- You gain access to vendor-specific features and permissions
+
+## Business Rules
+
+- Each customer can only own **one store**
+- Brand names must be unique across the platform
+- Brand names are automatically converted to slugs for URLs (e.g., "Tech Gadgets Pro" → "tech-gadgets-pro")
+- New stores start with 0 products sold and 0 followers
+
+<Info>
+  After creating your store, you can add products through the admin interface or product creation endpoints. Your store will be publicly visible immediately.
+</Info>
+
+## Related Endpoints
+
+- [List Stores](/api/stores/list-stores) - Browse all stores on the platform
+- [Get Store](/api/stores/get-store) - View store details and products
+- [Update Store](/api/stores/update-store) - Modify store information
+- [Delete Store](/api/stores/delete-store) - Remove store from platform
+
+## Code Reference
+
+Implementation: `~/workspace/source/stores/views.py:56-65`

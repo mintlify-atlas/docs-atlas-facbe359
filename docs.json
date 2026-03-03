@@ -67,6 +67,7 @@
             "group": "Shopping Cart",
             "pages": [
               "api/cart/get-cart",
+              "api/cart/add-to-cart",
               "api/cart/manage-items",
               "api/cart/apply-voucher"
             ]
@@ -93,7 +94,8 @@
             "pages": [
               "api/customers/create-customer",
               "api/customers/get-customer",
-              "api/customers/update-customer"
+              "api/customers/update-customer",
+              "api/customers/delete-customer"
             ]
           },
           {
@@ -107,7 +109,10 @@
             "group": "Stores",
             "pages": [
               "api/stores/list-stores",
-              "api/stores/get-store"
+              "api/stores/get-store",
+              "api/stores/create-store",
+              "api/stores/update-store",
+              "api/stores/delete-store"
             ]
           },
           {
