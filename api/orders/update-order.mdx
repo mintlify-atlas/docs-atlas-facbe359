@@ -1,0 +1,218 @@
+---
+title: "Update Order"
+api: "PUT /api/v1/i/orders/{id}/"
+description: "Update the billing address for an order"
+---
+
+## Description
+
+Updates an existing order's billing address. Only orders with status `awaiting_payment` can be modified.
+
+## Authentication
+
+Requires authentication. The order must belong to the authenticated customer.
+
+## Path Parameters
+
+<ParamField path="id" type="uuid" required>
+  The unique identifier of the order to update
+</ParamField>
+
+## Request Body
+
+<ParamField body="address" type="object" required>
+  New billing address for the order
+  
+  <Expandable title="Address Fields">
+    <ParamField body="street_address" type="string" required>
+      Street address (max 30 characters)
+    </ParamField>
+    
+    <ParamField body="postal_code" type="integer" required>
+      Postal or ZIP code
+    </ParamField>
+    
+    <ParamField body="city" type="string" required>
+      City name (max 50 characters)
+    </ParamField>
+    
+    <ParamField body="state" type="string" required>
+      State or province name (max 50 characters)
+    </ParamField>
+    
+    <ParamField body="country" type="string" required>
+      Full country name (not code). Must be more than 3 characters.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+Returns the updated order object with the same structure as the [Get Order](/api/orders/get-order) endpoint.
+
+<ResponseField name="id" type="uuid">
+  Order identifier
+</ResponseField>
+
+<ResponseField name="billing_address" type="object">
+  Updated billing address
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Order status (will be `awaiting_payment`)
+</ResponseField>
+
+<ResponseField name="..." type="various">
+  All other order fields (see Get Order response)
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X PUT "https://api.example.com/api/v1/i/orders/a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d/" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "address": {
+      "street_address": "456 Oak Avenue",
+      "postal_code": 67890,
+      "city": "Springfield",
+      "state": "IL",
+      "country": "United States"
+    }
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "id": "a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d",
+  "url": "https://api.example.com/api/v1/i/orders/a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d/",
+  "customer": {
+    "email": "customer@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+  },
+  "created": "2026-03-01T10:30:00Z",
+  "updated": "2026-03-01T11:45:00Z",
+  "billing_address": {
+    "street_address": "456 Oak Avenue",
+    "postal_code": 67890,
+    "city": "Springfield",
+    "state": "IL",
+    "country": "United States"
+  },
+  "items": [
+    {
+      "id": 1,
+      "product": {
+        "id": 42,
+        "name": "Wireless Headphones",
+        "slug": "wireless-headphones"
+      },
+      "variant": 101,
+      "unit_price": "79.99",
+      "quantity": 2,
+      "shipping": "5.00",
+      "discount_amount": "10.00",
+      "total_price": "159.98",
+      "offer": 5
+    }
+  ],
+  "items_count": 2,
+  "savings_on_items": "10.00",
+  "status": "awaiting_payment",
+  "subtotal": "159.98",
+  "amount_saved": "10.00",
+  "shipping": "5.00",
+  "total_amount": "154.98"
+}
+```
+
+```json 403 Forbidden
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+```json 404 Not Found
+{
+  "detail": "Not found."
+}
+```
+
+```json 400 Bad Request
+{
+  "country": [
+    "Country name should be in full"
+  ]
+}
+```
+</ResponseExample>
+
+## Modification Restrictions
+
+<Warning>
+  **Only Pending Orders Can Be Updated**
+  
+  Orders can only be modified when their status is `awaiting_payment`. Once an order is paid, delivered, or cancelled, the billing address cannot be changed.
+</Warning>
+
+Status-based restrictions:
+- `awaiting_payment` - **Can be updated**
+- `paid` - Cannot be updated (returns 403)
+- `delivered` - Cannot be updated (returns 403)
+- `cancelled` - Cannot be updated (returns 403)
+
+## Address Handling
+
+When updating the billing address:
+
+<Steps>
+  <Step title="Address Validation">
+    The provided address is validated according to the Address model rules.
+  </Step>
+  
+  <Step title="Address Lookup">
+    The system checks if an identical address already exists in the database.
+  </Step>
+  
+  <Step title="Address Assignment">
+    - If address exists: Uses the existing Address record
+    - If new: Creates a new Address record
+  </Step>
+  
+  <Step title="Order Update">
+    The order's `billing_address` field is updated to reference the address.
+  </Step>
+</Steps>
+
+## Field Constraints
+
+<ParamField body="street_address" type="string">
+  Maximum length: 30 characters
+</ParamField>
+
+<ParamField body="postal_code" type="integer">
+  Must be a valid positive integer
+</ParamField>
+
+<ParamField body="city" type="string">
+  Maximum length: 50 characters
+</ParamField>
+
+<ParamField body="state" type="string">
+  Maximum length: 50 characters
+</ParamField>
+
+<ParamField body="country" type="string">
+  Maximum length: 30 characters. Must be full name (more than 3 characters).
+</ParamField>
+
+## Notes
+
+- Only the billing address can be updated; order items cannot be modified after creation
+- To modify items, the order must be deleted and recreated from the cart
+- The `updated` timestamp is automatically set to the current time
+- Address validation ensures country names are full names, not abbreviations
+- If multiple identical addresses exist, the first one found is used

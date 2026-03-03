@@ -1,0 +1,481 @@
+---
+title: 'Filtering & Pagination'
+description: 'Learn how to filter, search, and paginate API results effectively'
+---
+
+## Overview
+
+The E-commerce API provides powerful filtering, searching, and pagination capabilities to help you retrieve exactly the data you need. These features are built on Django REST Framework and django-filters.
+
+## Pagination
+
+All list endpoints use **Limit-Offset pagination** by default.
+
+### Configuration
+
+Pagination settings are defined in `config/settings.py:167-182`:
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PAGINATION_CLASS': 'rest_framework.pagination.LimitOffsetPagination',
+    'PAGE_SIZE': 10,
+}
+```
+
+### Parameters
+
+<ParamField query="limit" type="integer" default="10">
+  Number of results to return per page
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Starting position in the result set
+</ParamField>
+
+### Example Requests
+
+<CodeGroup>
+```bash First Page (Default)
+GET /api/v1/products/
+# Returns first 10 products
+```
+
+```bash Custom Page Size
+GET /api/v1/products/?limit=25
+# Returns first 25 products
+```
+
+```bash Second Page
+GET /api/v1/products/?limit=10&offset=10
+# Returns products 11-20
+```
+
+```bash Skip to Page 3
+GET /api/v1/products/?limit=20&offset=40
+# Returns products 41-60 (20 per page)
+```
+</CodeGroup>
+
+### Response Format
+
+Paginated responses include metadata:
+
+```json
+{
+  "count": 157,
+  "next": "http://api.example.com/api/v1/products/?limit=10&offset=20",
+  "previous": "http://api.example.com/api/v1/products/?limit=10&offset=0",
+  "results": [
+    {
+      "id": 11,
+      "name": "Product Name",
+      // ... product fields
+    },
+    // ... more products
+  ]
+}
+```
+
+<ResponseField name="count" type="integer">
+  Total number of items across all pages
+</ResponseField>
+
+<ResponseField name="next" type="string">
+  URL for the next page (null if no more pages)
+</ResponseField>
+
+<ResponseField name="previous" type="string">
+  URL for the previous page (null if on first page)
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of items for the current page
+</ResponseField>
+
+### Calculating Pages
+
+```python
+# Formula for offset
+offset = (page_number - 1) * limit
+
+# Example: Get page 5 with 20 items per page
+# offset = (5 - 1) * 20 = 80
+GET /api/v1/products/?limit=20&offset=80
+```
+
+## Filtering
+
+Filter results by specific field values using query parameters.
+
+### Global Configuration
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_FILTER_BACKENDS': [
+        'django_filters.rest_framework.DjangoFilterBackend',
+        'rest_framework.filters.SearchFilter'
+    ]
+}
+```
+
+### Product Filtering
+
+The Product list endpoint supports filtering by multiple fields.
+
+**Location:** `catalogue/views.py:80`
+
+```python
+class ProductListView(GenericAPIView):
+    filterset_fields = ["category", "is_available", "store"]
+```
+
+#### Available Filters
+
+<ParamField query="category" type="integer">
+  Filter by category ID
+</ParamField>
+
+<ParamField query="is_available" type="boolean">
+  Filter by availability (`true` or `false`)
+</ParamField>
+
+<ParamField query="store" type="integer">
+  Filter by store/vendor ID
+</ParamField>
+
+#### Example Requests
+
+<CodeGroup>
+```bash Filter by Category
+GET /api/v1/products/?category=5
+# Returns products in category 5
+```
+
+```bash Filter by Availability
+GET /api/v1/products/?is_available=true
+# Returns only available products
+```
+
+```bash Filter by Store
+GET /api/v1/products/?store=12
+# Returns products from store 12
+```
+
+```bash Multiple Filters
+GET /api/v1/products/?category=5&is_available=true&store=12
+# Returns available products in category 5 from store 12
+```
+
+```bash Filter with Pagination
+GET /api/v1/products/?category=3&limit=20&offset=0
+# First 20 products in category 3
+```
+</CodeGroup>
+
+### Category Filtering
+
+Products can also be filtered by category slug through the URL path:
+
+**Location:** `catalogue/urls.py:17`
+
+```python
+path("products/categories/<slug:slug>/", ProductListView.as_view())
+```
+
+#### Example
+
+```bash
+GET /api/v1/products/categories/electronics/
+# Returns all products in the "electronics" category
+```
+
+<Info>
+  This approach uses the category slug instead of numeric ID, making URLs more readable.
+</Info>
+
+## Search
+
+Perform text-based searches across multiple fields.
+
+### Product Search
+
+The Product list endpoint searches across multiple fields:
+
+**Location:** `catalogue/views.py:81`
+
+```python
+class ProductListView(GenericAPIView):
+    search_fields = ["name", "category__name", "label", "store__brand_name"]
+```
+
+#### Search Fields
+
+- `name` - Product name
+- `category__name` - Category name (related field)
+- `label` - Product label
+- `store__brand_name` - Store brand name (related field)
+
+<Note>
+  Double underscores (`__`) indicate searches across related models (Django's lookup syntax).
+</Note>
+
+#### Example Requests
+
+<CodeGroup>
+```bash Basic Search
+GET /api/v1/products/?search=laptop
+# Returns products matching "laptop" in any search field
+```
+
+```bash Search by Brand
+GET /api/v1/products/?search=apple
+# Returns products with "apple" in product name, category, label, or brand
+```
+
+```bash Search with Filters
+GET /api/v1/products/?search=smartphone&is_available=true&category=2
+# Search for smartphones that are available in category 2
+```
+
+```bash Search with Pagination
+GET /api/v1/products/?search=wireless&limit=15&offset=0
+# First 15 products matching "wireless"
+```
+</CodeGroup>
+
+### Category Search
+
+Search categories by name:
+
+**Location:** `catalogue/views.py:35`
+
+```python
+class CategoryListView(ListAPIView):
+    search_fields = ["name"]
+```
+
+```bash
+GET /api/v1/categories/?search=electronics
+# Returns categories matching "electronics"
+```
+
+## Combining Features
+
+You can combine filtering, searching, and pagination in a single request.
+
+### Complex Query Example
+
+```bash
+GET /api/v1/products/?search=wireless&category=5&is_available=true&store=3&limit=20&offset=40
+```
+
+This query:
+1. **Searches** for "wireless" across name, category name, label, and brand
+2. **Filters** to category 5
+3. **Filters** to available products only
+4. **Filters** to store 3
+5. **Returns** 20 results (page 3)
+
+### Response Example
+
+```json
+{
+  "count": 87,
+  "next": "http://api.example.com/api/v1/products/?search=wireless&category=5&is_available=true&store=3&limit=20&offset=60",
+  "previous": "http://api.example.com/api/v1/products/?search=wireless&category=5&is_available=true&store=3&limit=20&offset=20",
+  "results": [
+    {
+      "id": 41,
+      "name": "Wireless Headphones Pro",
+      "category": {
+        "id": 5,
+        "name": "Audio",
+        "slug": "audio"
+      },
+      "store": {
+        "id": 3,
+        "brand_name": "TechStore"
+      },
+      "base_price": "149.99",
+      "is_available": true,
+      "rating": 4.5,
+      "total_stock_level": 250
+    }
+    // ... 19 more products
+  ]
+}
+```
+
+## Ordering
+
+Products are ordered by default ordering specified in the model.
+
+### Default Product Ordering
+
+**Location:** `catalogue/models.py:56-57`
+
+```python
+class Product(BaseModel):
+    class Meta:
+        ordering = ["-total_sold", "-rating"]
+```
+
+Products are ordered by:
+1. `total_sold` (descending) - Most popular first
+2. `rating` (descending) - Highest rated first
+
+### Default Order Ordering
+
+**Location:** `orders/models.py:55`
+
+```python
+class Order(BaseModel):
+    class Meta:
+        ordering = ["-created"]
+```
+
+Orders are ordered by creation date (newest first).
+
+<Warning>
+  Custom ordering via query parameters is not currently supported. Contact your API administrator if you need this feature.
+</Warning>
+
+## Advanced Filtering Patterns
+
+### Building Dynamic Queries
+
+Here are common patterns for building queries:
+
+<AccordionGroup>
+  <Accordion title="Marketplace View (All Stores)">
+    ```bash
+    GET /api/v1/products/?is_available=true&limit=50
+    ```
+    
+    Returns first 50 available products from all stores.
+  </Accordion>
+  
+  <Accordion title="Single Store Catalog">
+    ```bash
+    GET /api/v1/products/?store=7&is_available=true
+    ```
+    
+    Returns all available products from store 7.
+  </Accordion>
+  
+  <Accordion title="Category Browse">
+    ```bash
+    GET /api/v1/products/categories/electronics/?is_available=true&limit=24
+    ```
+    
+    Returns first 24 available electronics (e.g., for a category page).
+  </Accordion>
+  
+  <Accordion title="Store Category View">
+    ```bash
+    GET /api/v1/products/?store=5&category=3&is_available=true
+    ```
+    
+    Returns available products in category 3 from store 5.
+  </Accordion>
+  
+  <Accordion title="Search Results">
+    ```bash
+    GET /api/v1/products/?search=laptop&is_available=true&limit=30
+    ```
+    
+    Returns first 30 available products matching "laptop".
+  </Accordion>
+  
+  <Accordion title="Inventory Management">
+    ```bash
+    GET /api/v1/products/?store=12&is_available=false
+    ```
+    
+    Returns out-of-stock products for store 12.
+  </Accordion>
+</AccordionGroup>
+
+## Performance Tips
+
+<CardGroup cols={2}>
+  <Card title="Use Appropriate Limits" icon="gauge">
+    Set `limit` based on your UI needs. Smaller pages load faster and reduce bandwidth.
+  </Card>
+  
+  <Card title="Specific Filters" icon="filter">
+    Add filters like `is_available=true` or `store=X` to reduce result sets.
+  </Card>
+  
+  <Card title="Index-Friendly Queries" icon="database">
+    Filters on indexed fields (category, is_available, store) are optimized.
+  </Card>
+  
+  <Card title="Avoid Deep Pagination" icon="arrow-down">
+    Large offset values (e.g., offset=10000) can be slow. Consider alternative approaches for deep pagination.
+  </Card>
+</CardGroup>
+
+## Error Handling
+
+### Invalid Filter Values
+
+```json
+// Request: GET /api/v1/products/?category=invalid
+{
+  "category": [
+    "Enter a valid integer."
+  ]
+}
+```
+
+### Invalid Boolean
+
+```json
+// Request: GET /api/v1/products/?is_available=yes
+{
+  "is_available": [
+    "Must be a valid boolean."
+  ]
+}
+```
+
+<Info>
+  Use `true`/`false`, `1`/`0`, or `True`/`False` for boolean parameters.
+</Info>
+
+## Implementation Reference
+
+### View Configuration
+
+Here's how filtering and search are configured in the ProductListView:
+
+**Location:** `catalogue/views.py:73-86`
+
+```python
+class ProductListView(GenericAPIView, LimitOffsetPagination):
+    permission_classes = [AllowAny]
+    serializer_class = ProductListSerializer
+    filterset_fields = ["category", "is_available", "store"]
+    search_fields = ["name", "category__name", "label", "store__brand_name"]
+
+    def get_queryset(self):
+        queryset = Product.objects.all()
+        queryset = self.filter_queryset(queryset)
+        return queryset
+```
+
+The `filter_queryset()` method automatically applies:
+- DjangoFilterBackend (for `filterset_fields`)
+- SearchFilter (for `search_fields`)
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Product Endpoints" icon="box" href="/api-reference/products/list-products">
+    Explore the Product API endpoints
+  </Card>
+  <Card title="Data Models" icon="database" href="/concepts/data-models">
+    Learn more about the data models
+  </Card>
+</CardGroup>

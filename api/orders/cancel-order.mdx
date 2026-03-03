@@ -1,0 +1,127 @@
+---
+title: "Cancel Order"
+api: "DELETE /api/v1/i/orders/{id}/"
+description: "Delete/cancel an order"
+---
+
+## Description
+
+Deletes an order from the system. This permanently removes the order and all associated order items.
+
+## Authentication
+
+Requires authentication. The order must belong to the authenticated customer.
+
+## Path Parameters
+
+<ParamField path="id" type="uuid" required>
+  The unique identifier of the order to delete
+</ParamField>
+
+## Response
+
+Returns 204 No Content on successful deletion with an empty response body.
+
+<RequestExample>
+```bash cURL
+curl -X DELETE "https://api.example.com/api/v1/i/orders/a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d/" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```text 204 No Content
+// Empty response body
+```
+
+```json 404 Not Found
+{
+  "detail": "Not found."
+}
+```
+
+```json 401 Unauthorized
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+</ResponseExample>
+
+## Deletion Behavior
+
+<Warning>
+  **Permanent Deletion**
+  
+  This operation permanently deletes the order and all associated data. This action cannot be undone.
+</Warning>
+
+When an order is deleted:
+
+<Steps>
+  <Step title="Order Items Removed">
+    All order items associated with this order are deleted (cascade deletion).
+  </Step>
+  
+  <Step title="Order Removed">
+    The order record itself is permanently removed from the database.
+  </Step>
+  
+  <Step title="References Preserved">
+    Related records that reference the order are handled:
+    - **Billing Address**: Remains in the database (SET_NULL behavior)
+    - **Customer**: Unaffected
+    - **Voucher**: Freed for potential reuse
+    - **Offers**: Unaffected (historical records)
+  </Step>
+</Steps>
+
+## Alternative: Order Status
+
+Instead of deleting orders, you may want to mark them as cancelled using the order status field. While there's no dedicated endpoint for status updates, you can:
+
+1. Keep the order in the database with `status: cancelled`
+2. Maintain order history for analytics and customer records
+3. Allow customers to view their cancelled orders
+
+The DELETE endpoint is provided for cases where complete removal is necessary.
+
+## Use Cases
+
+### When to DELETE an order:
+- Customer created order by mistake immediately
+- Order contains incorrect items and needs to be recreated
+- Testing or development purposes
+- Customer requests complete data removal
+
+### When to mark as CANCELLED:
+- Order was partially processed
+- Need to maintain order history
+- For business analytics and reporting
+- Customer might want to reference it later
+
+## Access Control
+
+<Check>
+  **Customer Ownership**
+  
+  Only the customer who created the order can delete it. Attempting to delete another customer's order will result in a 404 Not Found error.
+</Check>
+
+## Cascade Deletion
+
+The following related records are automatically deleted:
+
+- **OrderItems**: All items within the order
+  - Item references to products and variants are removed
+  - Offer associations are cleared
+  - Pricing history is lost
+
+## Notes
+
+- Deletion is immediate and cannot be rolled back
+- No confirmation step is required from the API (implement in your client)
+- The endpoint doesn't check order status before deletion (any status can be deleted)
+- Associated addresses are NOT deleted and may be reused by other orders
+- Vouchers associated with deleted orders become available for reuse
+- Products and variants referenced by order items remain in the catalog
+- Consider implementing soft deletion in your application for better data retention

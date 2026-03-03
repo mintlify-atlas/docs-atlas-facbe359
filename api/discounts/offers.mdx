@@ -1,0 +1,281 @@
+---
+title: "Offers"
+description: "List active promotional offers with conditions and discounts"
+---
+
+## Overview
+
+The Offers API provides access to active promotional campaigns that can be applied to products or orders. Offers support various discount types and can be configured with specific eligibility conditions based on customers, products, categories, or order values.
+
+## Offer System
+
+### Offer Types
+
+Offers can be applied at two different levels:
+
+- **Product-level offers**: Apply to specific products or categories and are automatically applied for eligible products and customers
+- **Order-level offers**: Apply to the entire order and are applied at checkout
+
+### Discount Types
+
+Offers support the following discount types:
+
+- **Percentage**: A certain percentage off the price (e.g., 15% off)
+- **Fixed**: A fixed amount off the price (e.g., $10 off)
+
+### Offer Conditions
+
+Offers can have multiple conditions that determine when they can be applied:
+
+#### Customer Group Conditions
+- **All Customers**: Offer is available to everyone
+- **First Time Buyers**: Restricted to customers making their first purchase
+
+#### Product Conditions (Product-level offers only)
+- **Specific Products**: Offer applies only to selected products
+- **Specific Categories**: Offer applies to all products in selected categories
+
+#### Order Conditions (Order-level offers only)
+- **Minimum Order Value**: Order subtotal must meet or exceed the specified amount
+
+### Voucher Requirements
+
+Offers can optionally require a voucher code for redemption. When `requires_voucher` is `true`, customers must provide a valid voucher code to apply the offer.
+
+### Discount Limits
+
+Each offer has a `max_discount_allowed` that caps the total discount amount that can be given across all uses of the offer. The `total_discount_offered` tracks how much discount has been applied so far.
+
+## Get Offers
+
+<api-endpoint verb="get" path="/api/v1/offers/" />
+
+Retrieves all active offers. Returns offers that are currently within their validity period and have `is_active` set to `true`.
+
+### Response
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the offer
+</ResponseField>
+
+<ResponseField name="title" type="string">
+  Display name of the offer
+</ResponseField>
+
+<ResponseField name="store" type="integer" optional>
+  ID of the store this offer is linked to (null if applicable to all stores)
+</ResponseField>
+
+<ResponseField name="offer_type" type="string">
+  Type of offer: `product` for product-level or `order` for order-level
+</ResponseField>
+
+<ResponseField name="discount_type" type="string">
+  Type of discount: `percentage` or `fixed`
+</ResponseField>
+
+<ResponseField name="discount_value" type="decimal">
+  The discount amount (percentage value for percentage discounts, monetary amount for fixed discounts)
+</ResponseField>
+
+<ResponseField name="requires_voucher" type="boolean">
+  Whether a voucher code is required to redeem this offer
+</ResponseField>
+
+<ResponseField name="total_discount_offered" type="decimal">
+  Total discount amount that has been applied using this offer
+</ResponseField>
+
+<ResponseField name="max_discount_allowed" type="decimal">
+  Maximum total discount that can be given across all uses of this offer
+</ResponseField>
+
+<ResponseField name="valid_from" type="datetime">
+  Start date and time when the offer becomes active
+</ResponseField>
+
+<ResponseField name="valid_to" type="datetime">
+  End date and time when the offer expires
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether the offer is currently active
+</ResponseField>
+
+<ResponseField name="created" type="datetime">
+  Timestamp when the offer was created
+</ResponseField>
+
+<ResponseField name="updated" type="datetime">
+  Timestamp when the offer was last updated
+</ResponseField>
+
+<ResponseField name="claimed_by" type="array">
+  Array of customer IDs who have claimed this offer
+</ResponseField>
+
+<ResponseField name="conditions" type="array">
+  Array of condition objects that define eligibility criteria
+  
+  <Expandable title="Condition Object">
+    <ResponseField name="id" type="integer">
+      Unique identifier for the condition
+    </ResponseField>
+    
+    <ResponseField name="condition_type" type="string">
+      Type of condition: `specific_products`, `specific_categories`, `customer_groups`, or `min_order_value`
+    </ResponseField>
+    
+    <ResponseField name="min_order_value" type="decimal" optional>
+      Minimum order value required (only for `min_order_value` condition type)
+    </ResponseField>
+    
+    <ResponseField name="eligible_customers" type="string" optional>
+      Customer group eligibility: `all_customers` or `first_time_buyers` (only for `customer_groups` condition type)
+    </ResponseField>
+    
+    <ResponseField name="eligible_products" type="array" optional>
+      Array of product IDs (only for `specific_products` condition type)
+    </ResponseField>
+    
+    <ResponseField name="eligible_categories" type="array" optional>
+      Array of category IDs (only for `specific_categories` condition type)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="voucher_set" type="array">
+  Array of voucher objects associated with this offer
+  
+  <Expandable title="Voucher Object">
+    <ResponseField name="id" type="integer">
+      Unique identifier for the voucher
+    </ResponseField>
+    
+    <ResponseField name="name" type="string">
+      Display name of the voucher
+    </ResponseField>
+    
+    <ResponseField name="description" type="string">
+      Detailed description of the voucher
+    </ResponseField>
+    
+    <ResponseField name="code" type="string">
+      Unique voucher code (always uppercase)
+    </ResponseField>
+    
+    <ResponseField name="usage_type" type="string">
+      Usage pattern: `single`, `multiple`, or `once_per_customer`
+    </ResponseField>
+    
+    <ResponseField name="max_usage_limit" type="integer">
+      Maximum number of times this voucher can be used
+    </ResponseField>
+    
+    <ResponseField name="num_of_usage" type="integer">
+      Number of times this voucher has been used
+    </ResponseField>
+    
+    <ResponseField name="valid_from" type="datetime">
+      Start date and time when the voucher becomes valid
+    </ResponseField>
+    
+    <ResponseField name="valid_to" type="datetime">
+      End date and time when the voucher expires
+    </ResponseField>
+    
+    <ResponseField name="is_active" type="boolean">
+      Whether the voucher is currently active
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Response Example
+
+```json
+[
+  {
+    "id": 1,
+    "title": "Summer Sale 2026",
+    "store": null,
+    "offer_type": "product",
+    "discount_type": "percentage",
+    "discount_value": "15.00",
+    "requires_voucher": false,
+    "total_discount_offered": "150.00",
+    "max_discount_allowed": "5000.00",
+    "valid_from": "2026-06-01T00:00:00Z",
+    "valid_to": "2026-08-31T23:59:59Z",
+    "is_active": true,
+    "created": "2026-05-15T10:00:00Z",
+    "updated": "2026-06-01T12:30:00Z",
+    "claimed_by": [23, 45, 67],
+    "conditions": [
+      {
+        "id": 1,
+        "condition_type": "specific_categories",
+        "eligible_categories": [5, 8, 12]
+      }
+    ],
+    "voucher_set": []
+  },
+  {
+    "id": 2,
+    "title": "First Order Discount",
+    "store": null,
+    "offer_type": "order",
+    "discount_type": "fixed",
+    "discount_value": "10.00",
+    "requires_voucher": true,
+    "total_discount_offered": "450.00",
+    "max_discount_allowed": "1000.00",
+    "valid_from": "2026-01-01T00:00:00Z",
+    "valid_to": "2026-12-31T23:59:59Z",
+    "is_active": true,
+    "created": "2025-12-15T10:00:00Z",
+    "updated": "2026-03-01T08:15:00Z",
+    "claimed_by": [12, 34, 56, 78, 90],
+    "conditions": [
+      {
+        "id": 2,
+        "condition_type": "customer_groups",
+        "eligible_customers": "first_time_buyers"
+      },
+      {
+        "id": 3,
+        "condition_type": "min_order_value",
+        "min_order_value": "50.00"
+      }
+    ],
+    "voucher_set": [
+      {
+        "id": 1,
+        "name": "Welcome Voucher",
+        "description": "Get $10 off your first order over $50",
+        "code": "WELCOME10",
+        "usage_type": "once_per_customer",
+        "max_usage_limit": 1000,
+        "num_of_usage": 45,
+        "valid_from": "2026-01-01T00:00:00Z",
+        "valid_to": "2026-12-31T23:59:59Z",
+        "is_active": true
+      }
+    ]
+  }
+]
+```
+
+## Offer Validation Logic
+
+When an offer is applied (either automatically for product-level offers or via voucher for order-level offers), the system validates:
+
+1. **Time Period**: Offer must be active and within its validity period (`valid_from` to `valid_to`)
+2. **Customer Eligibility**: Customer must meet any customer group conditions
+3. **Product/Category Eligibility**: For product-level offers, the product must be in the eligible products or categories
+4. **Order Value**: For order-level offers, the order subtotal must meet the minimum order value requirement
+5. **Voucher Validity**: If a voucher is required, it must be valid and within usage limits
+6. **Discount Limit**: The offer must not have exceeded its `max_discount_allowed`
+
+## Related Endpoints
+
+- [Vouchers](/api/discounts/vouchers) - Apply and manage voucher codes

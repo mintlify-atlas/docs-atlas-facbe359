@@ -1,0 +1,130 @@
+---
+title: E-commerce API Documentation
+description: Complete REST API for building modern e-commerce applications with shopping cart, orders, payments, and product management
+---
+
+# Welcome to E-commerce API
+
+A comprehensive RESTful API for building e-commerce platforms with full support for product browsing, shopping cart management, order processing, and integrated payment handling. Built with Django REST Framework and designed for scalability.
+
+## Key Features
+
+This API provides everything you need to power a complete e-commerce platform:
+
+- **JWT Authentication** - Secure token-based authentication with access and refresh tokens
+- **Product Catalog** - Browse products with pagination, filtering, and search capabilities
+- **Shopping Cart** - Add, update, and remove items with real-time cart management
+- **Order Management** - Create, track, and update orders with status tracking
+- **Payment Processing** - Braintree payment integration for secure transactions
+- **Product Reviews** - Customer reviews and ratings for products
+- **Wishlist** - Save products for later purchase
+- **Store Management** - Multi-vendor support with store profiles
+- **Interactive Documentation** - Swagger UI for testing endpoints
+
+## Quick Links
+
+<CardGroup cols={2}>
+  <Card
+    title="Quickstart Guide"
+    icon="rocket"
+    href="/quickstart"
+  >
+    Get up and running in 5 minutes with your first API call
+  </Card>
+  <Card
+    title="Installation"
+    icon="docker"
+    href="/installation"
+  >
+    Set up the API locally using Docker and Docker Compose
+  </Card>
+  <Card
+    title="Authentication"
+    icon="lock"
+    href="/auth/overview"
+  >
+    Learn how to authenticate users and manage JWT tokens
+  </Card>
+  <Card
+    title="API Reference"
+    icon="book"
+    href="/api/products/list-products"
+  >
+    Explore all available endpoints and their parameters
+  </Card>
+</CardGroup>
+
+## Technology Stack
+
+The E-commerce API is built with modern, production-ready technologies:
+
+- **Python 3.10** - Modern Python with type hints and performance improvements
+- **Django 5.0** - Robust web framework with ORM and admin interface
+- **Django REST Framework 3.15** - Powerful toolkit for building Web APIs
+- **PostgreSQL 12** - Reliable relational database with advanced features
+- **JWT Authentication** - djangorestframework-simplejwt for secure token-based auth
+- **Braintree** - Payment gateway integration for credit card processing
+- **Celery** - Asynchronous task processing for background jobs
+- **RabbitMQ** - Message broker for task queuing
+- **Gunicorn** - Production-grade WSGI HTTP server
+- **Docker** - Containerized deployment for consistency across environments
+
+## API Structure
+
+All API endpoints are versioned and follow RESTful conventions:
+
+```
+Base URL: http://localhost:8000/api/v1/
+```
+
+### Main Endpoint Groups
+
+- `/api/v1/products/` - Product catalog and reviews
+- `/api/v1/categories/` - Product categories
+- `/api/v1/shopping-cart/` - Shopping cart operations
+- `/api/v1/orders/` - Order management
+- `/api/v1/customers/` - Customer accounts
+- `/api/v1/checkout/` - Payment processing
+- `/api/v1/stores/` - Store management
+- `/auth/token/` - Authentication endpoints
+
+### Response Format
+
+All responses are returned in JSON format with consistent structure:
+
+```json
+{
+  "count": 42,
+  "next": "http://localhost:8000/api/v1/products/?limit=10&offset=10",
+  "previous": null,
+  "results": [
+    // ... paginated results
+  ]
+}
+```
+
+<Note>
+  The API uses limit-offset pagination with a default page size of 10 items. You can adjust this using the `limit` and `offset` query parameters.
+</Note>
+
+## Getting Help
+
+<CardGroup cols={2}>
+  <Card title="Interactive Documentation" icon="browser" href="http://localhost:8000/swagger/">
+    Test API endpoints directly in your browser with Swagger UI
+  </Card>
+  <Card title="OpenAPI Schema" icon="file-code" href="http://localhost:8000/api/v1/openapi/">
+    Download the complete OpenAPI schema for code generation
+  </Card>
+</CardGroup>
+
+<Tip>
+  Once you have the API running locally, visit `http://localhost:8000/swagger/` for interactive documentation where you can test all endpoints directly in your browser.
+</Tip>
+
+## Next Steps
+
+1. Follow the [Installation Guide](/installation) to set up the API locally
+2. Complete the [Quickstart Tutorial](/quickstart) to make your first API call
+3. Learn about [Authentication](/auth/overview) to secure your requests
+4. Explore the [API Reference](/api/products/list-products) for detailed endpoint documentation

@@ -1,0 +1,279 @@
+---
+title: "Get Order"
+api: "GET /api/v1/i/orders/{id}/"
+description: "Retrieve detailed information about a specific order"
+---
+
+## Description
+
+Returns complete details for a single order, including all order items, pricing calculations, and billing address.
+
+## Authentication
+
+Requires authentication. The order must belong to the authenticated customer.
+
+## Path Parameters
+
+<ParamField path="id" type="uuid" required>
+  The unique identifier of the order to retrieve
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="uuid">
+  Unique identifier for the order
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  API endpoint URL for this specific order
+</ResponseField>
+
+<ResponseField name="customer" type="object">
+  Customer information
+  <Expandable title="Customer Details">
+    <ResponseField name="email" type="string">
+      Customer email address
+    </ResponseField>
+    <ResponseField name="first_name" type="string">
+      Customer first name
+    </ResponseField>
+    <ResponseField name="last_name" type="string">
+      Customer last name
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="created" type="datetime">
+  Timestamp when the order was created
+</ResponseField>
+
+<ResponseField name="updated" type="datetime">
+  Timestamp when the order was last updated
+</ResponseField>
+
+<ResponseField name="billing_address" type="object">
+  Billing address for the order
+  <Expandable title="Address Details">
+    <ResponseField name="street_address" type="string">
+      Street address
+    </ResponseField>
+    <ResponseField name="postal_code" type="integer">
+      Postal/ZIP code
+    </ResponseField>
+    <ResponseField name="city" type="string">
+      City name
+    </ResponseField>
+    <ResponseField name="state" type="string">
+      State/Province name
+    </ResponseField>
+    <ResponseField name="country" type="string">
+      Country name (full name, not country code)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="items" type="array">
+  Array of order items with complete product details
+  <Expandable title="Order Item">
+    <ResponseField name="id" type="integer">
+      Order item ID
+    </ResponseField>
+    <ResponseField name="product" type="object">
+      Simplified product information
+      <Expandable title="Product Details">
+        <ResponseField name="id" type="integer">
+          Product ID
+        </ResponseField>
+        <ResponseField name="name" type="string">
+          Product name
+        </ResponseField>
+        <ResponseField name="slug" type="string">
+          Product URL slug
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    <ResponseField name="variant" type="integer">
+      Product variant ID
+    </ResponseField>
+    <ResponseField name="unit_price" type="decimal">
+      Price per unit (after any item-level discounts)
+    </ResponseField>
+    <ResponseField name="quantity" type="integer">
+      Quantity ordered
+    </ResponseField>
+    <ResponseField name="shipping" type="decimal">
+      Shipping cost for this item
+    </ResponseField>
+    <ResponseField name="discount_amount" type="decimal">
+      Total discount amount applied to this item from offers
+    </ResponseField>
+    <ResponseField name="total_price" type="decimal">
+      Total price for this item (unit_price × quantity)
+    </ResponseField>
+    <ResponseField name="offer" type="integer">
+      Offer ID if a promotional offer was applied (nullable)
+    </ResponseField>
+    <ResponseField name="created" type="datetime">
+      When this item was added to the order
+    </ResponseField>
+    <ResponseField name="updated" type="datetime">
+      When this item was last updated
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="items_count" type="integer">
+  Total number of items in the order (sum of all item quantities)
+</ResponseField>
+
+<ResponseField name="savings_on_items" type="decimal">
+  Total savings from promotional offers applied to items
+</ResponseField>
+
+<ResponseField name="status" type="string">
+  Current order status: `paid`, `awaiting_payment`, `delivered`, or `cancelled`
+</ResponseField>
+
+<ResponseField name="subtotal" type="decimal">
+  Sum of all item total prices (before shipping and voucher discounts)
+</ResponseField>
+
+<ResponseField name="amount_saved" type="decimal">
+  Total discount amount from both vouchers and item-level offers
+</ResponseField>
+
+<ResponseField name="shipping" type="decimal">
+  Total shipping cost for all items in the order
+</ResponseField>
+
+<ResponseField name="total_amount" type="decimal">
+  Final order total: subtotal + shipping - amount_saved
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.example.com/api/v1/i/orders/a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d/" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "id": "a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d",
+  "url": "https://api.example.com/api/v1/i/orders/a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d/",
+  "customer": {
+    "email": "customer@example.com",
+    "first_name": "John",
+    "last_name": "Doe"
+  },
+  "created": "2026-03-01T10:30:00Z",
+  "updated": "2026-03-01T10:35:00Z",
+  "billing_address": {
+    "street_address": "123 Main St",
+    "postal_code": 12345,
+    "city": "Anytown",
+    "state": "CA",
+    "country": "Canada"
+  },
+  "items": [
+    {
+      "id": 1,
+      "product": {
+        "id": 42,
+        "name": "Wireless Headphones",
+        "slug": "wireless-headphones"
+      },
+      "variant": 101,
+      "unit_price": "79.99",
+      "quantity": 2,
+      "shipping": "5.00",
+      "discount_amount": "10.00",
+      "total_price": "159.98",
+      "offer": 5,
+      "created": "2026-03-01T10:30:00Z",
+      "updated": "2026-03-01T10:30:00Z"
+    },
+    {
+      "id": 2,
+      "product": {
+        "id": 58,
+        "name": "Phone Case",
+        "slug": "phone-case"
+      },
+      "variant": 203,
+      "unit_price": "15.99",
+      "quantity": 1,
+      "shipping": "3.00",
+      "discount_amount": "0.00",
+      "total_price": "15.99",
+      "offer": null,
+      "created": "2026-03-01T10:30:00Z",
+      "updated": "2026-03-01T10:30:00Z"
+    }
+  ],
+  "items_count": 3,
+  "savings_on_items": "10.00",
+  "status": "awaiting_payment",
+  "subtotal": "175.97",
+  "amount_saved": "10.00",
+  "shipping": "8.00",
+  "total_amount": "173.97"
+}
+```
+
+```json 404 Not Found
+{
+  "detail": "Not found."
+}
+```
+</ResponseExample>
+
+## Order Pricing Breakdown
+
+The order total is calculated as follows:
+
+### Item-Level Calculations
+For each item:
+- **unit_price**: Price per unit after offer discounts are applied
+- **total_price**: unit_price × quantity
+- **discount_amount**: (original_price - unit_price) × quantity
+
+### Order-Level Calculations
+- **subtotal**: Sum of all item `total_price` values
+- **savings_on_items**: Sum of all item `discount_amount` values
+- **shipping**: Sum of all item `shipping` costs
+- **amount_saved**: `savings_on_items` + voucher discount (if applied)
+- **total_amount**: `subtotal` + `shipping` - `amount_saved`
+
+## Order Status Workflow
+
+<Steps>
+  <Step title="Order Created">
+    Status: `awaiting_payment`
+    
+    Order is created from the customer's cart and awaits payment.
+  </Step>
+  
+  <Step title="Payment Processed">
+    Status: `paid`
+    
+    Customer completes payment successfully.
+  </Step>
+  
+  <Step title="Order Delivered">
+    Status: `delivered`
+    
+    Order has been shipped and delivered to the customer.
+  </Step>
+</Steps>
+
+Alternatively, an order can be:
+- **cancelled**: Marked as cancelled (or deleted entirely)
+
+## Notes
+
+- Only the order owner can retrieve their order details
+- The order includes historical offer information that was active when items were added
+- Expired offers are preserved in order history for record-keeping
+- The `items_count` is the sum of quantities, not the number of unique items

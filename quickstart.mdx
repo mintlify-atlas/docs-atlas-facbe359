@@ -1,80 +1,368 @@
 ---
-title: "Quickstart"
-description: "Start building awesome documentation in minutes"
+title: Quickstart Guide
+description: Make your first API call in 5 minutes - authenticate and retrieve products from the E-commerce API
 ---
 
-## Get started in three steps
+# Quickstart Guide
 
-Get your documentation site running locally and make your first customization.
-
-### Step 1: Set up your local environment
-
-<AccordionGroup>
-  <Accordion icon="copy" title="Clone your docs locally">
-    During the onboarding process, you created a GitHub repository with your docs content if you didn't already have one. You can find a link to this repository in your [dashboard](https://dashboard.mintlify.com).
-    
-    To clone the repository locally so that you can make and preview changes to your docs, follow the [Cloning a repository](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository) guide in the GitHub docs.
-  </Accordion>
-  <Accordion icon="rectangle-terminal" title="Start the preview server">
-    1. Install the Mintlify CLI: `npm i -g mint`
-    2. Navigate to your docs directory and run: `mint dev`
-    3. Open `http://localhost:3000` to see your docs live!
-    
-    <Tip>Your preview updates automatically as you edit files.</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 2: Deploy your changes
-
-<AccordionGroup>
-  <Accordion icon="github" title="Install our GitHub app">
-    Install the Mintlify GitHub app from your [dashboard](https://dashboard.mintlify.com/settings/organization/github-app).
-    
-    Our GitHub app automatically deploys your changes to your docs site, so you don't need to manage deployments yourself.
-</Accordion>
-<Accordion icon="palette" title="Update your site name and colors">
-    For a first change, let's update the name and colors of your docs site.
-
-    1. Open `docs.json` in your editor.
-    2. Change the `"name"` field to your project name.
-    3. Update the `"colors"` to match your brand.
-    4. Save and see your changes instantly at `http://localhost:3000`.
-
-    <Tip>Try changing the primary color to see an immediate difference!</Tip>
-  </Accordion>
-</AccordionGroup>
-
-### Step 3: Go live
-
-<Accordion icon="rocket" title="Publish your docs">
-  1. Commit and push your changes.
-  2. Your docs will update and be live in moments!
-</Accordion>
-
-## Next steps
-
-Now that you have your docs running, explore these key features:
-
-<CardGroup cols={2}>
-
-<Card title="Write Content" icon="pen-to-square" href="/essentials/markdown">
-  Learn MDX syntax and start writing your documentation.
-</Card>
-
-<Card title="Customize style" icon="palette" href="/essentials/settings">
-  Make your docs match your brand perfectly.
-</Card>
-
-<Card title="Add code examples" icon="square-code" href="/essentials/code">
-  Include syntax-highlighted code blocks.
-</Card>
-
-<Card title="API documentation" icon="code" href="/api-reference/introduction">
-  Auto-generate API docs from OpenAPI specs.
-</Card>
-
-</CardGroup>
+This guide will walk you through making your first API calls to the E-commerce API. You'll create an account, authenticate, and retrieve a list of products.
 
 <Note>
-  **Need help?** See our [full documentation](https://mintlify.com/docs) or join our [community](https://mintlify.com/community).
+  This guide assumes you have already installed and started the API locally. If not, follow the [Installation Guide](/installation) first.
 </Note>
+
+## Prerequisites
+
+- API running at `http://localhost:8000`
+- cURL, Postman, or any HTTP client
+- Basic understanding of REST APIs and JSON
+
+## Step-by-Step Tutorial
+
+<Steps>
+  <Step title="Create a Customer Account">
+    First, create a customer account to access the API:
+
+    ```bash
+    curl -X POST http://localhost:8000/api/v1/customers/ \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "demo@example.com",
+        "first_name": "John",
+        "last_name": "Doe",
+        "date_of_birth": "1990-01-15",
+        "password": "securepassword123",
+        "password2": "securepassword123"
+      }'
+    ```
+
+    **Response (201 Created):**
+    ```json
+    {
+      "id": 1,
+      "email": "demo@example.com",
+      "first_name": "John",
+      "last_name": "Doe",
+      "date_of_birth": "1990-01-15"
+    }
+    ```
+
+    <Info>
+      The `password2` field is used for password confirmation. Both password fields must match.
+    </Info>
+  </Step>
+
+  <Step title="Obtain Access Token">
+    Authenticate using your credentials to receive JWT tokens:
+
+    ```bash
+    curl -X POST http://localhost:8000/auth/token/ \
+      -H "Content-Type: application/json" \
+      -d '{
+        "email": "demo@example.com",
+        "password": "securepassword123"
+      }'
+    ```
+
+    **Response:**
+    ```json
+    {
+      "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoiYWNjZXNzIiwiZXhwIjoxNzA5NTY3ODkwLCJpYXQiOjE3MDk1NjQyOTAsImp0aSI6IjJkNWY4ZTgxYjYxNDQ4OGNhNjVjOTEyZGQwZjk4NTUwIiwidXNlcl9pZCI6MX0.abc123...",
+      "refresh": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJ0b2tlbl90eXBlIjoicmVmcmVzaCIsImV4cCI6MTcwOTgyMzQ5MCwiaWF0IjoxNzA5NTY0MjkwLCJqdGkiOiI5ZTRlYjk4NzgwNTQ0MmI2OTY4YTQ4MTQxZmE3YjUwMCIsInVzZXJfaWQiOjF9.xyz789..."
+    }
+    ```
+
+    <Warning>
+      Save the `access` token - you'll need it for all authenticated requests. Access tokens expire after 1 hour.
+    </Warning>
+  </Step>
+
+  <Step title="Retrieve Products">
+    Now make your first authenticated request to retrieve the product catalog:
+
+    ```bash
+    curl -X GET http://localhost:8000/api/v1/products/ \
+      -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+    ```
+
+    Replace `YOUR_ACCESS_TOKEN` with the actual access token from Step 2.
+
+    **Response:**
+    ```json
+    {
+      "count": 25,
+      "next": "http://localhost:8000/api/v1/products/?limit=10&offset=10",
+      "previous": null,
+      "results": [
+        {
+          "id": 1,
+          "name": "Wireless Bluetooth Headphones",
+          "slug": "wireless-bluetooth-headphones",
+          "description": "High-quality wireless headphones with noise cancellation",
+          "price": "79.99",
+          "stock": 50,
+          "category": "Electronics",
+          "image": "http://localhost:8000/media/products/headphones.jpg",
+          "created_at": "2024-01-15T10:30:00Z",
+          "updated_at": "2024-02-20T14:22:00Z"
+        },
+        {
+          "id": 2,
+          "name": "Smart Fitness Watch",
+          "slug": "smart-fitness-watch",
+          "description": "Track your health and fitness goals with this smartwatch",
+          "price": "129.99",
+          "stock": 30,
+          "category": "Electronics",
+          "image": "http://localhost:8000/media/products/watch.jpg",
+          "created_at": "2024-01-16T09:15:00Z",
+          "updated_at": "2024-02-18T11:45:00Z"
+        }
+      ]
+    }
+    ```
+
+    <Tip>
+      The API uses limit-offset pagination. Use `?limit=20&offset=0` to control page size and position.
+    </Tip>
+  </Step>
+
+  <Step title="Get a Single Product">
+    Retrieve detailed information about a specific product:
+
+    ```bash
+    curl -X GET http://localhost:8000/api/v1/products/1/ \
+      -H "Authorization: Bearer YOUR_ACCESS_TOKEN"
+    ```
+
+    **Response:**
+    ```json
+    {
+      "id": 1,
+      "name": "Wireless Bluetooth Headphones",
+      "slug": "wireless-bluetooth-headphones",
+      "description": "High-quality wireless headphones with active noise cancellation, 30-hour battery life, and premium sound quality.",
+      "price": "79.99",
+      "stock": 50,
+      "category": {
+        "id": 3,
+        "name": "Electronics",
+        "slug": "electronics"
+      },
+      "images": [
+        {
+          "id": 1,
+          "image": "http://localhost:8000/media/products/headphones.jpg",
+          "alt_text": "Wireless headphones front view"
+        }
+      ],
+      "average_rating": 4.5,
+      "review_count": 12,
+      "created_at": "2024-01-15T10:30:00Z",
+      "updated_at": "2024-02-20T14:22:00Z"
+    }
+    ```
+  </Step>
+</Steps>
+
+## Complete Example with Python
+
+Here's a complete Python script that performs all the steps above:
+
+<CodeGroup>
+```python Python (requests)
+import requests
+
+BASE_URL = "http://localhost:8000"
+
+# Step 1: Create account
+register_data = {
+    "email": "demo@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "date_of_birth": "1990-01-15",
+    "password": "securepassword123",
+    "password2": "securepassword123"
+}
+
+response = requests.post(f"{BASE_URL}/api/v1/customers/", json=register_data)
+print(f"Account created: {response.status_code}")
+
+# Step 2: Get access token
+auth_data = {
+    "email": "demo@example.com",
+    "password": "securepassword123"
+}
+
+response = requests.post(f"{BASE_URL}/auth/token/", json=auth_data)
+tokens = response.json()
+access_token = tokens["access"]
+print(f"Access token: {access_token[:50]}...")
+
+# Step 3: Get products
+headers = {"Authorization": f"Bearer {access_token}"}
+response = requests.get(f"{BASE_URL}/api/v1/products/", headers=headers)
+products = response.json()
+
+print(f"\nFound {products['count']} products:")
+for product in products['results'][:3]:
+    print(f"  - {product['name']}: ${product['price']}")
+```
+
+```javascript JavaScript (fetch)
+const BASE_URL = "http://localhost:8000";
+
+// Step 1: Create account
+const registerData = {
+  email: "demo@example.com",
+  first_name: "John",
+  last_name: "Doe",
+  date_of_birth: "1990-01-15",
+  password: "securepassword123",
+  password2: "securepassword123"
+};
+
+let response = await fetch(`${BASE_URL}/api/v1/customers/`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(registerData)
+});
+
+console.log(`Account created: ${response.status}`);
+
+// Step 2: Get access token
+const authData = {
+  email: "demo@example.com",
+  password: "securepassword123"
+};
+
+response = await fetch(`${BASE_URL}/auth/token/`, {
+  method: "POST",
+  headers: { "Content-Type": "application/json" },
+  body: JSON.stringify(authData)
+});
+
+const tokens = await response.json();
+const accessToken = tokens.access;
+console.log(`Access token: ${accessToken.substring(0, 50)}...`);
+
+// Step 3: Get products
+response = await fetch(`${BASE_URL}/api/v1/products/`, {
+  headers: { "Authorization": `Bearer ${accessToken}` }
+});
+
+const products = await response.json();
+console.log(`\nFound ${products.count} products:`);
+products.results.slice(0, 3).forEach(product => {
+  console.log(`  - ${product.name}: $${product.price}`);
+});
+```
+
+```bash cURL
+#!/bin/bash
+
+BASE_URL="http://localhost:8000"
+
+# Step 1: Create account
+echo "Creating account..."
+curl -X POST $BASE_URL/api/v1/customers/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "demo@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "date_of_birth": "1990-01-15",
+    "password": "securepassword123",
+    "password2": "securepassword123"
+  }'
+
+# Step 2: Get access token
+echo "\n\nGetting access token..."
+TOKEN_RESPONSE=$(curl -X POST $BASE_URL/auth/token/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "demo@example.com",
+    "password": "securepassword123"
+  }')
+
+ACCESS_TOKEN=$(echo $TOKEN_RESPONSE | jq -r '.access')
+echo "Access token: ${ACCESS_TOKEN:0:50}..."
+
+# Step 3: Get products
+echo "\n\nFetching products..."
+curl -X GET $BASE_URL/api/v1/products/ \
+  -H "Authorization: Bearer $ACCESS_TOKEN"
+```
+</CodeGroup>
+
+## Token Refresh
+
+Access tokens expire after 1 hour (config/settings.py:209). When this happens, use your refresh token to get a new access token:
+
+```bash
+curl -X POST http://localhost:8000/auth/token/refresh/ \
+  -H "Content-Type: application/json" \
+  -d '{"refresh": "YOUR_REFRESH_TOKEN"}'
+```
+
+**Response:**
+```json
+{
+  "access": "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+}
+```
+
+<Info>
+  Refresh tokens are valid for 3 days (config/settings.py:210). After that, users must log in again.
+</Info>
+
+## Next Steps
+
+Now that you've made your first API calls, explore more features:
+
+<CardGroup cols={2}>
+  <Card title="Add Products to Cart" icon="cart-shopping" href="/api-reference/cart">
+    Learn how to manage shopping cart items
+  </Card>
+  <Card title="Create Orders" icon="receipt" href="/api-reference/orders">
+    Process orders and manage customer purchases
+  </Card>
+  <Card title="Product Reviews" icon="star" href="/api-reference/reviews">
+    Add and retrieve product reviews
+  </Card>
+  <Card title="Payment Processing" icon="credit-card" href="/api-reference/payments">
+    Integrate Braintree payment processing
+  </Card>
+</CardGroup>
+
+## Common Issues
+
+<AccordionGroup>
+  <Accordion title="401 Unauthorized Error">
+    This means your access token is missing, invalid, or expired. Check that:
+    - You're including the `Authorization: Bearer YOUR_TOKEN` header
+    - Your token hasn't expired (1 hour lifetime)
+    - The token is copied correctly without extra spaces
+
+    If expired, use the refresh token endpoint to get a new access token.
+  </Accordion>
+
+  <Accordion title="403 Forbidden Error">
+    Your token is valid, but you don't have permission to access this resource. Some endpoints require specific user roles or ownership of the resource.
+  </Accordion>
+
+  <Accordion title="Connection Refused">
+    The API server is not running. Make sure you've started it with:
+    ```bash
+    docker-compose up
+    ```
+  </Accordion>
+
+  <Accordion title="Email Already Exists">
+    The email address is already registered. Either use a different email or authenticate with the existing account.
+  </Accordion>
+</AccordionGroup>
+
+<Tip>
+  Visit `http://localhost:8000/swagger/` to explore all available endpoints interactively in your browser!
+</Tip>

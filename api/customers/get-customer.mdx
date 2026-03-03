@@ -1,0 +1,121 @@
+---
+title: "Get Customer"
+api: "GET /api/v1/customers/{id}/"
+description: "Retrieve a customer's profile information"
+---
+
+Retrieves detailed information about a specific customer by their ID. This endpoint is publicly accessible for viewing customer profiles.
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the customer
+</ParamField>
+
+## Response
+
+<ResponseField name="email" type="string">
+  Customer's email address
+</ResponseField>
+
+<ResponseField name="first_name" type="string">
+  Customer's first name
+</ResponseField>
+
+<ResponseField name="last_name" type="string">
+  Customer's last name
+</ResponseField>
+
+<ResponseField name="slug" type="string">
+  Auto-generated slug based on the customer's full name
+</ResponseField>
+
+<ResponseField name="date_of_birth" type="string">
+  Customer's date of birth in ISO 8601 format
+</ResponseField>
+
+<ResponseField name="address" type="object" nullable>
+  Customer's shipping/billing address
+  
+  <Expandable title="Address properties">
+    <ResponseField name="street_address" type="string">
+      Street address (max 30 characters)
+    </ResponseField>
+    
+    <ResponseField name="postal_code" type="integer">
+      Postal code
+    </ResponseField>
+    
+    <ResponseField name="city" type="string">
+      City name (max 50 characters)
+    </ResponseField>
+    
+    <ResponseField name="state" type="string">
+      State or province (max 50 characters)
+    </ResponseField>
+    
+    <ResponseField name="country" type="string">
+      Country name in full (max 30 characters)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="last_purchase_date" type="string" nullable>
+  Timestamp of the customer's most recent purchase
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET https://api.example.com/api/v1/customers/123/ \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```python Python
+import requests
+
+url = "https://api.example.com/api/v1/customers/123/"
+headers = {
+    "Authorization": "Bearer YOUR_TOKEN"
+}
+
+response = requests.get(url, headers=headers)
+print(response.json())
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/v1/customers/123/', {
+  method: 'GET',
+  headers: {
+    'Authorization': 'Bearer YOUR_TOKEN'
+  }
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "email": "customer@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "slug": "john-doe",
+  "date_of_birth": "1990-01-15",
+  "address": {
+    "street_address": "123 Main Street",
+    "postal_code": 12345,
+    "city": "San Francisco",
+    "state": "California",
+    "country": "United States"
+  },
+  "last_purchase_date": "2024-03-01T14:30:00Z"
+}
+```
+
+```json 404 Not Found
+{
+  "detail": "Not found."
+}
+```
+</ResponseExample>

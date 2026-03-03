@@ -1,0 +1,233 @@
+---
+title: "Create Order"
+api: "POST /api/v1/i/orders/"
+description: "Create a new order from the customer's shopping cart"
+---
+
+## Description
+
+Converts the authenticated customer's cart into an order. This endpoint supports two actions:
+- **checkout**: Creates an order and redirects to payment
+- **save_order**: Creates an order for later checkout
+
+All items from the cart are transferred to the order with their current prices and active offers locked in.
+
+## Authentication
+
+Requires authentication. The order is created for the authenticated customer.
+
+## Request Body
+
+<ParamField body="action" type="string" required>
+  The action to perform:
+  - `checkout` - Create order and redirect to payment
+  - `save_order` - Create order without immediate payment
+</ParamField>
+
+<ParamField body="billing_address" type="object">
+  Billing address for the order. Required if customer doesn't have a saved address.
+  
+  <Expandable title="Address Fields">
+    <ParamField body="street_address" type="string" required>
+      Street address (max 30 characters)
+    </ParamField>
+    
+    <ParamField body="postal_code" type="integer" required>
+      Postal or ZIP code
+    </ParamField>
+    
+    <ParamField body="city" type="string" required>
+      City name (max 50 characters)
+    </ParamField>
+    
+    <ParamField body="state" type="string" required>
+      State or province name (max 50 characters)
+    </ParamField>
+    
+    <ParamField body="country" type="string" required>
+      Full country name (not code). Must be more than 3 characters.
+    </ParamField>
+  </Expandable>
+</ParamField>
+
+## Response
+
+### For action: "save_order"
+
+<ResponseField name="success" type="string">
+  Success message confirming the order was saved
+</ResponseField>
+
+### For action: "checkout"
+
+Redirects to the payment endpoint for the created order.
+
+## Request Validation
+
+<Check>
+  **Cart Must Not Be Empty**
+  
+  The customer's cart must contain at least one item to create an order.
+</Check>
+
+<Check>
+  **Billing Address Required**
+  
+  Either provide a `billing_address` in the request or the customer must have a saved address.
+</Check>
+
+<Check>
+  **Valid Action**
+  
+  The `action` field must be either "checkout" or "save_order".
+</Check>
+
+<RequestExample>
+```bash Checkout with New Address
+curl -X POST "https://api.example.com/api/v1/i/orders/" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "checkout",
+    "billing_address": {
+      "street_address": "123 Main St",
+      "postal_code": 12345,
+      "city": "Anytown",
+      "state": "CA",
+      "country": "Canada"
+    }
+  }'
+```
+
+```bash Save Order for Later
+curl -X POST "https://api.example.com/api/v1/i/orders/" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "save_order",
+    "billing_address": {
+      "street_address": "123 Main St",
+      "postal_code": 12345,
+      "city": "Anytown",
+      "state": "CA",
+      "country": "Canada"
+    }
+  }'
+```
+
+```bash Use Customer's Saved Address
+curl -X POST "https://api.example.com/api/v1/i/orders/" \
+  -H "Authorization: Bearer YOUR_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "action": "checkout"
+  }'
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 Created (save_order)
+{
+  "success": "Your Order has been saved"
+}
+```
+
+```json 302 Redirect (checkout)
+// Redirects to: /api/v1/i/payments/{order_id}/
+```
+
+```json 400 Empty Cart
+{
+  "error": "Can't create an order. Your cart is empty"
+}
+```
+
+```json 400 Missing Address
+{
+  "billing_address": "Billing address was not provided"
+}
+```
+
+```json 400 Invalid Action
+{
+  "error": "Invalid action"
+}
+```
+
+```json 400 Invalid Address
+{
+  "country": [
+    "Country name should be in full"
+  ]
+}
+```
+</ResponseExample>
+
+## Order Creation Process
+
+When an order is created, the following happens:
+
+<Steps>
+  <Step title="Cart Validation">
+    The system validates that the cart is not empty and refreshes to get latest prices.
+  </Step>
+  
+  <Step title="Address Assignment">
+    A billing address is assigned from either:
+    - The provided `billing_address` (creates new Address record)
+    - The customer's existing saved address
+  </Step>
+  
+  <Step title="Order Creation">
+    A new order is created with:
+    - Status: `awaiting_payment`
+    - Associated billing address
+    - Customer reference
+  </Step>
+  
+  <Step title="Transfer Cart Items">
+    All cart items are transferred to order items with:
+    - Current unit prices locked in
+    - Active offers and discounts preserved
+    - Shipping costs captured
+    - Applied vouchers transferred
+  </Step>
+  
+  <Step title="Cart Cleared">
+    The customer's cart is emptied after successful order creation.
+  </Step>
+  
+  <Step title="Action Execution">
+    - **checkout**: Redirects to payment endpoint
+    - **save_order**: Returns success message
+  </Step>
+</Steps>
+
+## Order Item Preservation
+
+When cart items become order items, the following data is preserved:
+
+- **unit_price**: Current price after discounts
+- **quantity**: Number of units
+- **discount_amount**: Total discount from offers
+- **offer**: Reference to the offer that was applied
+- **shipping**: Per-item shipping cost
+- **total_price**: Final price (unit_price × quantity)
+
+This ensures that even if product prices or offers change later, the order reflects the pricing at the time of purchase.
+
+## Voucher Handling
+
+If a voucher was applied to the cart:
+- The voucher is transferred to the order
+- The discount amount is calculated and stored
+- The voucher discount is included in the order's `amount_saved`
+
+## Notes
+
+- Orders are created in an atomic transaction to ensure data consistency
+- If order creation fails, the cart remains unchanged
+- The cart is forcefully refreshed before order creation to ensure current pricing
+- Country names must be full names (e.g., "Canada" not "CA")
+- Only one voucher per order is supported
+- New addresses are created if they don't exist; existing ones are reused if found

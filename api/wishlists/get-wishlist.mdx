@@ -1,0 +1,205 @@
+---
+title: 'Get Wishlist'
+openapi: 'GET /api/v1/wishlists/{id}/'
+---
+
+Retrieve details for a specific wishlist, including all items in the wishlist.
+
+## Authentication
+
+This endpoint requires authentication for private wishlists. Public and shared wishlists can be accessed through their respective URLs.
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the wishlist
+</ParamField>
+
+## Accessing Shared and Public Wishlists
+
+Depending on the wishlist's audience setting, different access methods are available:
+
+<Tabs>
+  <Tab title="Private Wishlist">
+    **Endpoint**: `GET /api/v1/wishlists/{id}/`
+    
+    Private wishlists can only be accessed by the owner with authentication.
+    
+    ```bash
+    curl --request GET \
+      --url 'https://api.example.com/api/v1/wishlists/1/' \
+      --header 'Authorization: Bearer YOUR_TOKEN'
+    ```
+  </Tab>
+  
+  <Tab title="Public Wishlist">
+    **Endpoint**: `GET /api/v1/wishlists/{id}/public/`
+    
+    Public wishlists can be viewed by anyone without authentication.
+    
+    ```bash
+    curl --request GET \
+      --url 'https://api.example.com/api/v1/wishlists/1/public/'
+    ```
+  </Tab>
+  
+  <Tab title="Shared Wishlist">
+    **Endpoint**: `GET /api/v1/wishlists/shared/{token}/`
+    
+    Shared wishlists require a unique sharing token but no authentication.
+    
+    ```bash
+    curl --request GET \
+      --url 'https://api.example.com/api/v1/wishlists/shared/abc123def456/'
+    ```
+  </Tab>
+</Tabs>
+
+## Response
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the wishlist
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the wishlist
+</ResponseField>
+
+<ResponseField name="owner" type="string">
+  Display name of the wishlist owner
+</ResponseField>
+
+<ResponseField name="audience" type="string">
+  Visibility setting for the wishlist
+  
+  - `private`: Only the owner can view the wishlist
+  - `public`: Anyone can view the wishlist  
+  - `shared`: Only users with the sharing URL can view the wishlist
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Optional notes about the wishlist
+</ResponseField>
+
+<ResponseField name="items" type="array">
+  Array of products in the wishlist
+  
+  <Expandable title="WishlistItem properties">
+    <ResponseField name="id" type="integer">
+      Unique identifier for the wishlist item
+    </ResponseField>
+    
+    <ResponseField name="product" type="object">
+      Complete product details including name, price, description, images, and availability
+    </ResponseField>
+    
+    <ResponseField name="added_at" type="string">
+      ISO 8601 timestamp when the product was added to the wishlist
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="absolute_url" type="string">
+  Direct URL to access this wishlist
+</ResponseField>
+
+<ResponseField name="public_url" type="string">
+  Public URL for the wishlist (only available if audience is `public`)
+</ResponseField>
+
+<ResponseField name="sharing_url" type="string">
+  Shareable URL with token for the wishlist (only available if audience is `shared`)
+</ResponseField>
+
+<ResponseField name="created" type="string">
+  Timestamp when the wishlist was created
+</ResponseField>
+
+<ResponseField name="updated" type="string">
+  Timestamp when the wishlist was last updated
+</ResponseField>
+
+## Example Response
+
+```json 200 - Success
+{
+  "id": 1,
+  "name": "Birthday Wishlist",
+  "owner": "john.doe@example.com",
+  "audience": "shared",
+  "note": "Items I'd like for my birthday",
+  "items": [
+    {
+      "id": 10,
+      "product": {
+        "id": 123,
+        "name": "Wireless Headphones",
+        "description": "Premium noise-cancelling headphones",
+        "price": "79.99",
+        "image_url": "https://example.com/images/headphones.jpg",
+        "in_stock": true
+      },
+      "added_at": "2026-02-15T10:30:00Z"
+    },
+    {
+      "id": 11,
+      "product": {
+        "id": 456,
+        "name": "Smart Watch",
+        "description": "Fitness tracking smartwatch",
+        "price": "249.99",
+        "image_url": "https://example.com/images/watch.jpg",
+        "in_stock": true
+      },
+      "added_at": "2026-02-18T14:22:00Z"
+    }
+  ],
+  "absolute_url": "/api/v1/wishlists/1/",
+  "public_url": null,
+  "sharing_url": "/api/v1/wishlists/shared/abc123def456/",
+  "created": "2026-02-15T10:25:00Z",
+  "updated": "2026-02-18T14:22:00Z"
+}
+```
+
+```json 401 - Unauthorized
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+```json 403 - Forbidden
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+```json 404 - Not Found
+{
+  "detail": "Not found."
+}
+```
+
+## Sharing Features
+
+<AccordionGroup>
+  <Accordion title="Sharing a Private Wishlist">
+    To share a private wishlist, update its audience to `shared` using the [Update Wishlist](/api/wishlists/manage-wishlist#update-wishlist) endpoint. A unique sharing token will be automatically generated.
+    
+    The response will include a `sharing_url` that can be shared with others. Recipients can view the wishlist without authentication using this URL.
+  </Accordion>
+  
+  <Accordion title="Making a Wishlist Public">
+    Set the audience to `public` to make a wishlist visible to anyone. Public wishlists can be accessed via the `public_url` endpoint without authentication.
+    
+    This is useful for gift registries, wedding wishlists, or public collections.
+  </Accordion>
+  
+  <Accordion title="Reverting to Private">
+    Change the audience back to `private` at any time. This will invalidate the sharing URL and make the wishlist visible only to the owner.
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  When a wishlist is set to `shared` or `public`, anyone with the URL can view all items in the wishlist. Ensure you only share wishlists that you're comfortable making visible to others.
+</Warning>

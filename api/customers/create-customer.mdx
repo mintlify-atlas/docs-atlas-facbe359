@@ -1,0 +1,164 @@
+---
+title: "Create Customer"
+api: "POST /api/v1/customers/"
+description: "Register a new customer account"
+---
+
+Creates a new customer account with email authentication. This endpoint is publicly accessible and does not require authentication.
+
+## Request Body
+
+<ParamField body="email" type="string" required>
+  Customer's email address. Must be unique and will be used as the login identifier.
+</ParamField>
+
+<ParamField body="first_name" type="string" required>
+  Customer's first name
+</ParamField>
+
+<ParamField body="last_name" type="string" required>
+  Customer's last name
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Account password. Must meet Django's password validation requirements.
+</ParamField>
+
+<ParamField body="password2" type="string" required>
+  Password confirmation. Must match the password field.
+</ParamField>
+
+<ParamField body="date_of_birth" type="string">
+  Customer's date of birth in ISO 8601 format (YYYY-MM-DD)
+</ParamField>
+
+## Response
+
+<ResponseField name="email" type="string">
+  Customer's email address
+</ResponseField>
+
+<ResponseField name="first_name" type="string">
+  Customer's first name
+</ResponseField>
+
+<ResponseField name="last_name" type="string">
+  Customer's last name
+</ResponseField>
+
+<ResponseField name="slug" type="string">
+  Auto-generated slug based on the customer's full name
+</ResponseField>
+
+<ResponseField name="date_of_birth" type="string">
+  Customer's date of birth
+</ResponseField>
+
+<ResponseField name="address" type="object" nullable>
+  Customer's address (null on creation)
+  
+  <Expandable title="Address properties">
+    <ResponseField name="street_address" type="string">
+      Street address (max 30 characters)
+    </ResponseField>
+    
+    <ResponseField name="postal_code" type="integer">
+      Postal code
+    </ResponseField>
+    
+    <ResponseField name="city" type="string">
+      City name (max 50 characters)
+    </ResponseField>
+    
+    <ResponseField name="state" type="string">
+      State or province (max 50 characters)
+    </ResponseField>
+    
+    <ResponseField name="country" type="string">
+      Country name in full (max 30 characters, must be more than 3 characters)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="last_purchase_date" type="string" nullable>
+  Timestamp of the customer's most recent purchase (null for new customers)
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X POST https://api.example.com/api/v1/customers/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "customer@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "password": "SecureP@ssw0rd123",
+    "password2": "SecureP@ssw0rd123",
+    "date_of_birth": "1990-01-15"
+  }'
+```
+
+```python Python
+import requests
+
+url = "https://api.example.com/api/v1/customers/"
+payload = {
+    "email": "customer@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "password": "SecureP@ssw0rd123",
+    "password2": "SecureP@ssw0rd123",
+    "date_of_birth": "1990-01-15"
+}
+
+response = requests.post(url, json=payload)
+print(response.json())
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/v1/customers/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    email: 'customer@example.com',
+    first_name: 'John',
+    last_name: 'Doe',
+    password: 'SecureP@ssw0rd123',
+    password2: 'SecureP@ssw0rd123',
+    date_of_birth: '1990-01-15'
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+</RequestExample>
+
+<ResponseExample>
+```json 201 Created
+{
+  "email": "customer@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "slug": "john-doe",
+  "date_of_birth": "1990-01-15",
+  "address": null,
+  "last_purchase_date": null
+}
+```
+
+```json 400 Bad Request
+{
+  "error": "Passwords don't match"
+}
+```
+
+```json 400 Bad Request
+{
+  "email": [
+    "customer with this email address already exists."
+  ]
+}
+```
+</ResponseExample>

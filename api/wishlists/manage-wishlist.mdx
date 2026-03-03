@@ -1,0 +1,325 @@
+---
+title: 'Manage Wishlist'
+description: 'Create, update, and delete wishlists, and manage wishlist items'
+---
+
+This page covers all write operations for wishlists including creating new wishlists, updating wishlist details, adding/removing products, and deleting wishlists.
+
+## Create Wishlist
+
+<ParamField body="POST" path="/api/v1/wishlists/">
+  Create a new wishlist for the authenticated user.
+</ParamField>
+
+### Authentication
+
+This endpoint requires authentication. Include a valid bearer token in the Authorization header.
+
+### Request Body
+
+<ParamField body="name" type="string" required>
+  Name of the wishlist. Must be unique for the user.
+</ParamField>
+
+<ParamField body="audience" type="string" default="private">
+  Visibility setting for the wishlist. Options:
+  
+  - `private`: Only you can view your wishlist
+  - `public`: Anyone can view this wishlist
+  - `shared`: Only users with the URL can view the wishlist
+</ParamField>
+
+<ParamField body="note" type="string">
+  Optional notes or description for the wishlist
+</ParamField>
+
+### Example Request
+
+```bash Create Private Wishlist
+curl --request POST \
+  --url 'https://api.example.com/api/v1/wishlists/' \
+  --header 'Authorization: Bearer YOUR_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Birthday Wishlist",
+    "audience": "private",
+    "note": "Items I would like for my birthday"
+  }'
+```
+
+```bash Create Shared Wishlist
+curl --request POST \
+  --url 'https://api.example.com/api/v1/wishlists/' \
+  --header 'Authorization: Bearer YOUR_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Wedding Registry",
+    "audience": "shared",
+    "note": "Our wedding gift registry"
+  }'
+```
+
+### Example Response
+
+```json 201 - Created
+{
+  "id": 3,
+  "name": "Birthday Wishlist",
+  "owner": "john.doe@example.com",
+  "audience": "private",
+  "note": "Items I would like for my birthday",
+  "items": [],
+  "absolute_url": "/api/v1/wishlists/3/",
+  "public_url": null,
+  "sharing_url": null,
+  "created": "2026-03-03T15:30:00Z",
+  "updated": "2026-03-03T15:30:00Z"
+}
+```
+
+```json 400 - Bad Request
+{
+  "name": [
+    "You already have a wishlist with this name"
+  ]
+}
+```
+
+---
+
+## Update Wishlist
+
+<ParamField body="PUT" path="/api/v1/wishlists/{id}/">
+  Update wishlist details such as name, audience, or notes.
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the wishlist to update
+</ParamField>
+
+### Request Body
+
+<ParamField body="name" type="string">
+  Updated name for the wishlist
+</ParamField>
+
+<ParamField body="audience" type="string">
+  Updated visibility setting. Changing to `shared` automatically generates a sharing token.
+</ParamField>
+
+<ParamField body="note" type="string">
+  Updated notes for the wishlist
+</ParamField>
+
+### Example Request
+
+```bash Update Audience to Shared
+curl --request PUT \
+  --url 'https://api.example.com/api/v1/wishlists/3/' \
+  --header 'Authorization: Bearer YOUR_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "name": "Birthday Wishlist",
+    "audience": "shared",
+    "note": "Updated: Items I would like for my birthday - share with family!"
+  }'
+```
+
+### Example Response
+
+```json 201 - Updated
+{
+  "id": 3,
+  "name": "Birthday Wishlist",
+  "owner": "john.doe@example.com",
+  "audience": "shared",
+  "note": "Updated: Items I would like for my birthday - share with family!",
+  "items": [],
+  "absolute_url": "/api/v1/wishlists/3/",
+  "public_url": null,
+  "sharing_url": "/api/v1/wishlists/shared/xyz789ghi012/",
+  "created": "2026-03-03T15:30:00Z",
+  "updated": "2026-03-03T15:35:00Z"
+}
+```
+
+<Note>
+  When changing the audience from `private` to `shared`, a unique sharing token is automatically generated and included in the `sharing_url` field.
+</Note>
+
+---
+
+## Add Product to Wishlist
+
+<ParamField body="POST" path="/api/v1/wishlists/{id}/">
+  Add a product to an existing wishlist.
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the wishlist
+</ParamField>
+
+### Request Body
+
+<ParamField body="product_id" type="integer" required>
+  The ID of the product to add to the wishlist
+</ParamField>
+
+### Example Request
+
+```bash Add Product
+curl --request POST \
+  --url 'https://api.example.com/api/v1/wishlists/3/' \
+  --header 'Authorization: Bearer YOUR_TOKEN' \
+  --header 'Content-Type: application/json' \
+  --data '{
+    "product_id": 123
+  }'
+```
+
+### Example Response
+
+```json 201 - Product Added
+{
+  "message": "Product added to wishlist"
+}
+```
+
+```json 400 - Bad Request
+{
+  "error": "Product is required"
+}
+```
+
+```json 404 - Not Found
+{
+  "detail": "Not found."
+}
+```
+
+<Info>
+  If the product is already in the wishlist, the request will succeed without creating a duplicate entry.
+</Info>
+
+---
+
+## Remove Product from Wishlist
+
+<ParamField body="DELETE" path="/api/v1/wishlists/{id}/">
+  Remove a specific product from a wishlist or delete the entire wishlist.
+</ParamField>
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the wishlist
+</ParamField>
+
+### Request Body
+
+<ParamField body="product_id" type="integer">
+  The ID of the product to remove. If omitted, the entire wishlist will be deleted.
+</ParamField>
+
+### Example Request
+
+<Tabs>
+  <Tab title="Remove Product">
+    ```bash
+    curl --request DELETE \
+      --url 'https://api.example.com/api/v1/wishlists/3/' \
+      --header 'Authorization: Bearer YOUR_TOKEN' \
+      --header 'Content-Type: application/json' \
+      --data '{
+        "product_id": 123
+      }'
+    ```
+    
+    Removes product with ID 123 from the wishlist. The wishlist itself remains.
+  </Tab>
+  
+  <Tab title="Delete Wishlist">
+    ```bash
+    curl --request DELETE \
+      --url 'https://api.example.com/api/v1/wishlists/3/' \
+      --header 'Authorization: Bearer YOUR_TOKEN' \
+      --header 'Content-Type: application/json' \
+      --data '{}'
+    ```
+    
+    Deletes the entire wishlist and all its items.
+  </Tab>
+</Tabs>
+
+### Example Response
+
+```json 204 - No Content
+```
+
+```json 404 - Not Found
+{
+  "detail": "Not found."
+}
+```
+
+---
+
+## Wishlist Item Management
+
+<CardGroup cols={2}>
+  <Card title="Add Multiple Items" icon="plus">
+    To add multiple products at once, make separate API calls for each product. Consider implementing batch operations on your client for better user experience.
+  </Card>
+  
+  <Card title="Item Ordering" icon="arrow-down-1-9">
+    Items are ordered by the `added_at` timestamp by default. The most recently added items appear last in the items array.
+  </Card>
+  
+  <Card title="Duplicate Prevention" icon="shield-check">
+    The API automatically prevents duplicate products in a wishlist. Adding the same product twice will not create duplicate entries.
+  </Card>
+  
+  <Card title="Product Availability" icon="circle-check">
+    Products in wishlists retain their current availability status. Check the product's `in_stock` field when displaying wishlist items.
+  </Card>
+</CardGroup>
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Unique Wishlist Names">
+    Each user must have unique wishlist names. Before creating a wishlist, consider checking existing names or handle the validation error gracefully in your UI.
+  </Accordion>
+  
+  <Accordion title="Sharing Tokens Security">
+    Sharing tokens are automatically generated and should be treated as sensitive URLs. They provide access to wishlist content without authentication.
+    
+    - Don't log or expose sharing tokens in client-side code
+    - Regenerate tokens by toggling the audience setting if a URL is compromised
+    - Consider implementing expiration for shared wishlists in your application logic
+  </Accordion>
+  
+  <Accordion title="Managing Public Wishlists">
+    Public wishlists are discoverable by their ID. Consider:
+    
+    - Adding a confirmation step before making a wishlist public
+    - Allowing users to revert to private at any time
+    - Clearly communicating the visibility level in your UI
+  </Accordion>
+  
+  <Accordion title="Handling Deleted Products">
+    If a product is deleted from your catalog, the wishlist item's product field becomes `null`. Handle this gracefully in your UI by:
+    
+    - Showing "Product no longer available" messages
+    - Providing an option to remove unavailable items
+    - Filtering out null products when displaying wishlists
+  </Accordion>
+</AccordionGroup>
+
+<Warning>
+  Deleting a wishlist is permanent and cannot be undone. All items in the wishlist will be removed. Ensure you implement proper confirmation dialogs in your application.
+</Warning>

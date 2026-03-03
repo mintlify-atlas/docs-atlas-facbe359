@@ -1,0 +1,185 @@
+---
+title: "Manage Cart Items"
+api: "POST /api/v1/cart/items/"
+description: "Update or remove items from the shopping cart"
+---
+
+## Overview
+
+Manage individual items in the shopping cart. This endpoint supports updating item quantities and removing items from the cart.
+
+## Update Item Quantity
+
+<api method="PUT" endpoint="/api/v1/cart/items/" />
+
+Update the quantity of an existing item in the cart. The quantity parameter is additive - it will be added to the current quantity.
+
+### Request
+
+<ParamField path="item_key" type="string" required>
+  Unique identifier for the cart item (format: `prod{id}_{sku}_dflt`)
+</ParamField>
+
+<ParamField path="quantity" type="integer" required>
+  Quantity change to apply (positive to increase, negative to decrease). Minimum value: 1
+</ParamField>
+
+```bash cURL
+curl -X PUT https://api.example.com/api/v1/cart/items/ \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=your_session_id" \
+  -d '{
+    "item_key": "prod123_SKU789_dflt",
+    "quantity": 2
+  }'
+```
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the update operation succeeded
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Status message describing the result
+</ResponseField>
+
+```json 200 OK
+{
+  "success": true,
+  "message": "Quantity updated"
+}
+```
+
+### Response - Stock Limited
+
+If the requested quantity exceeds available stock, the quantity will be capped at the maximum available:
+
+```json 200 OK
+{
+  "success": true,
+  "message": "Quantity limited to available stock: (5)"
+}
+```
+
+### Response - Item Removed
+
+If the quantity adjustment results in zero or negative quantity, the item is removed:
+
+```json 200 OK
+{
+  "success": true,
+  "message": "Item removed from cart"
+}
+```
+
+### Error Responses
+
+```json 400 Bad Request - Invalid Item Key
+{
+  "item_key": ["Invalid cart item key"]
+}
+```
+
+```json 400 Bad Request - Product Unavailable
+{
+  "item_key": ["Product is no longer availabe"]
+}
+```
+
+```json 400 Bad Request - Insufficient Stock
+{
+  "quantity": ["Requested quantity: (10) exceeds available stock: (5) for this variant"]
+}
+```
+
+```json 400 Bad Request - Variant Removed
+{
+  "item_key": ["Product variant no longer exists"]
+}
+```
+
+## Remove Item from Cart
+
+<api method="DELETE" endpoint="/api/v1/cart/items/" />
+
+Permanently remove an item from the shopping cart.
+
+### Request
+
+<ParamField path="item_key" type="string" required>
+  Unique identifier for the cart item to remove
+</ParamField>
+
+```bash cURL
+curl -X DELETE https://api.example.com/api/v1/cart/items/ \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=your_session_id" \
+  -d '{
+    "item_key": "prod123_SKU789_dflt"
+  }'
+```
+
+### Response
+
+<ResponseField name="success" type="boolean">
+  Whether the remove operation succeeded
+</ResponseField>
+
+<ResponseField name="message" type="string">
+  Status message describing the result
+</ResponseField>
+
+```json 204 No Content - Success
+{
+  "success": true,
+  "message": "Item has been removed from cart"
+}
+```
+
+### Error Responses
+
+```json 404 Not Found - Item Not in Cart
+{
+  "success": false,
+  "message": "This item is not in your cart"
+}
+```
+
+```json 400 Bad Request - Invalid Item Key
+{
+  "item_key": ["Invalid cart item key"]
+}
+```
+
+## Validation Rules
+
+### Item Key Validation
+- Must exist in the current cart session
+- Format: `prod{product_id}_{variant_sku}_dflt`
+- Case-sensitive
+
+### Quantity Updates
+- Minimum quantity: 1
+- Automatically capped at available stock level
+- If resulting quantity is less than or equal to 0, item is removed
+- Stock validation occurs in real-time
+
+### Product Availability
+- Product variant must be active
+- Product variant must exist in database
+- If unavailable, item is automatically removed with appropriate message
+
+## Automatic Price Updates
+
+When updating cart items, the following are automatically recalculated:
+- Current product price (reflects any active offers)
+- Offer eligibility and status
+- Voucher discount amounts (if applicable)
+- Cart totals
+
+## Related Operations
+
+- To add new items to cart, use `POST /api/v1/cart/`
+- To view cart contents, use `GET /api/v1/cart/`
+- To clear entire cart, use `DELETE /api/v1/cart/`

@@ -1,0 +1,396 @@
+---
+title: "Product Variants"
+description: "Manage product variants with different attributes, pricing, and stock levels"
+---
+
+## Overview
+
+Product variants allow products to have multiple variations with different attributes (e.g., color, size), pricing adjustments, and individual stock tracking. Variants inherit properties from their parent product.
+
+## Variant Attributes
+
+Variants are defined by their attributes, which are specific characteristics that differentiate them from other variants of the same product.
+
+### Common Attribute Types
+
+- **Color**: Red, Blue, Black, White, etc.
+- **Size**: Small, Medium, Large, XL, etc.
+- **Material**: Cotton, Polyester, Leather, etc.
+- **Storage**: 64GB, 128GB, 256GB, etc.
+- **Style**: Slim Fit, Regular Fit, Loose Fit, etc.
+
+---
+
+## Get Product Attributes
+
+Retrieve all available attributes for a specific product.
+
+<CodeGroup>
+```bash GET
+GET /api/v1/products/{id}/attributes/
+```
+</CodeGroup>
+
+### Authentication
+
+This endpoint does not require authentication. It is publicly accessible.
+
+### Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the product
+</ParamField>
+
+### Response
+
+Returns an array of attribute objects available for the product.
+
+<ResponseField name="id" type="integer">
+  Unique attribute identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Attribute name (e.g., "Color", "Size", "Storage")
+</ResponseField>
+
+### Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.example.com/api/v1/products/1/attributes/" \
+  -H "Accept: application/json"
+```
+
+```python Python
+import requests
+
+product_id = 1
+url = f"https://api.example.com/api/v1/products/{product_id}/attributes/"
+response = requests.get(url)
+attributes = response.json()
+
+print("Available attributes:")
+for attr in attributes:
+    print(f"- {attr['name']} (ID: {attr['id']})")
+```
+
+```javascript JavaScript
+const productId = 1;
+fetch(`https://api.example.com/api/v1/products/${productId}/attributes/`)
+  .then(response => response.json())
+  .then(attributes => {
+    console.log('Available attributes:');
+    attributes.forEach(attr => {
+      console.log(`- ${attr.name} (ID: ${attr.id})`);
+    });
+  });
+```
+</CodeGroup>
+
+### Response Example
+
+```json 200 OK
+[
+  {
+    "id": 1,
+    "name": "Color"
+  },
+  {
+    "id": 2,
+    "name": "Size"
+  }
+]
+```
+
+### Error Responses
+
+<ResponseField name="404" type="Not Found">
+  Product with the specified ID does not exist
+  
+  ```json
+  {
+    "detail": "Not found."
+  }
+  ```
+</ResponseField>
+
+---
+
+## Variant Structure
+
+Variants are included in the product details response when you retrieve a specific product. See the example below:
+
+### Variant Fields
+
+<ResponseField name="id" type="integer">
+  Unique variant identifier
+</ResponseField>
+
+<ResponseField name="sku" type="string">
+  Stock Keeping Unit - unique identifier for inventory tracking
+  - Must be unique across all variants
+  - Format example: `PROD-COLOR-SIZE` (e.g., `WH-BLK-L`)
+</ResponseField>
+
+<ResponseField name="is_default" type="boolean">
+  Indicates if this is the default variant for the product
+  - Only one variant per product can be default
+  - Standalone products must have exactly one default variant
+</ResponseField>
+
+<ResponseField name="price_adjustment" type="string">
+  Amount to add to the product's base price (decimal format)
+  - Can be positive (premium variant) or negative (discounted variant)
+  - Example: `"10.00"` means this variant costs $10 more than base price
+  - Final price = base_price + price_adjustment
+</ResponseField>
+
+<ResponseField name="stock_level" type="integer">
+  Current available stock quantity for this variant
+  - Must be non-negative
+  - When stock reaches 0, the variant becomes unavailable
+  - Product's total_stock_level is sum of all variant stock levels
+</ResponseField>
+
+<ResponseField name="quantity_sold" type="integer">
+  Total number of units sold for this variant
+  - Used for popularity tracking and sorting
+  - Automatically incremented when orders are placed
+  - Product's total_sold is sum of all variant quantities sold
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether this variant is active and available for purchase
+  - Inactive variants are hidden from product listings
+  - Set to false to temporarily disable a variant
+</ResponseField>
+
+<ResponseField name="created" type="string">
+  ISO 8601 timestamp of variant creation
+</ResponseField>
+
+<ResponseField name="updated" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+<ResponseField name="attributes" type="array">
+  Array of attribute-value pairs that define this variant
+  
+  <Expandable title="Attribute Object">
+    <ResponseField name="attribute" type="string">
+      Attribute name (e.g., "Color", "Size")
+    </ResponseField>
+    
+    <ResponseField name="value" type="string">
+      Specific value for this variant (e.g., "Red", "Large")
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Variant Pricing Example
+
+```json
+{
+  "product": {
+    "name": "Classic T-Shirt",
+    "base_price": "19.99"
+  },
+  "variants": [
+    {
+      "sku": "TSHIRT-RED-S",
+      "price_adjustment": "0.00",
+      "attributes": [
+        {"attribute": "Color", "value": "Red"},
+        {"attribute": "Size", "value": "Small"}
+      ]
+    },
+    {
+      "sku": "TSHIRT-BLU-XL",
+      "price_adjustment": "3.00",
+      "attributes": [
+        {"attribute": "Color", "value": "Blue"},
+        {"attribute": "Size", "value": "XL"}
+      ]
+    }
+  ]
+}
+```
+
+In this example:
+- Red Small T-Shirt: $19.99 (base price + $0.00)
+- Blue XL T-Shirt: $22.99 (base price + $3.00)
+
+---
+
+## Get Product Variants
+
+Variants are included when retrieving product details.
+
+<CodeGroup>
+```bash GET
+GET /api/v1/products/{id}/
+```
+</CodeGroup>
+
+### Response Example with Variants
+
+```json 200 OK
+{
+  "id": 5,
+  "name": "Performance Running Shoes",
+  "base_price": "89.99",
+  "is_standalone": false,
+  "total_stock_level": 450,
+  "total_sold": 2340,
+  "variants": [
+    {
+      "id": 15,
+      "sku": "SHOES-BLK-9",
+      "is_default": true,
+      "price_adjustment": "0.00",
+      "stock_level": 75,
+      "quantity_sold": 456,
+      "is_active": true,
+      "created": "2024-01-10T08:00:00Z",
+      "updated": "2024-03-01T10:15:00Z",
+      "attributes": [
+        {
+          "attribute": "Color",
+          "value": "Black"
+        },
+        {
+          "attribute": "Size",
+          "value": "9"
+        }
+      ]
+    },
+    {
+      "id": 16,
+      "sku": "SHOES-BLK-10",
+      "is_default": false,
+      "price_adjustment": "0.00",
+      "stock_level": 82,
+      "quantity_sold": 523,
+      "is_active": true,
+      "created": "2024-01-10T08:00:00Z",
+      "updated": "2024-03-01T10:15:00Z",
+      "attributes": [
+        {
+          "attribute": "Color",
+          "value": "Black"
+        },
+        {
+          "attribute": "Size",
+          "value": "10"
+        }
+      ]
+    },
+    {
+      "id": 17,
+      "sku": "SHOES-WHT-9",
+      "is_default": false,
+      "price_adjustment": "5.00",
+      "stock_level": 45,
+      "quantity_sold": 312,
+      "is_active": true,
+      "created": "2024-01-10T08:00:00Z",
+      "updated": "2024-03-01T10:15:00Z",
+      "attributes": [
+        {
+          "attribute": "Color",
+          "value": "White"
+        },
+        {
+          "attribute": "Size",
+          "value": "9"
+        }
+      ]
+    }
+  ]
+}
+```
+
+---
+
+## Variant Rules and Constraints
+
+### General Rules
+
+1. **SKU Uniqueness**: Each variant must have a unique SKU across all products
+2. **Attribute Uniqueness**: Each variant must have a unique combination of attribute values
+3. **Default Variant**: Products can have one default variant
+4. **Standalone Products**: Products marked as `is_standalone=True` can only have one default variant
+
+### Stock Management
+
+1. **Automatic Updates**: Product `total_stock_level` and `is_available` are automatically updated when variant stock changes
+2. **Availability**: A product is available if `total_stock_level > 0`
+3. **Stock Synchronization**: Changing variant stock levels triggers product-level stock updates
+
+### Pricing
+
+1. **Final Price Calculation**: `final_price = product.base_price + variant.price_adjustment`
+2. **Negative Adjustments**: Price adjustments can be negative for discounted variants
+3. **Offer Application**: Active product offers are applied on top of the final variant price
+4. **Minimum Price**: Final price cannot be negative after adjustments
+
+### Best Practices
+
+1. **SKU Format**: Use a consistent SKU naming convention (e.g., `PRODUCT-ATTR1-ATTR2`)
+2. **Default Selection**: Set the most popular variant as default
+3. **Stock Monitoring**: Regularly check stock levels to prevent overselling
+4. **Attribute Naming**: Use clear, customer-facing attribute names
+5. **Price Consistency**: Keep price adjustments reasonable relative to base price
+
+---
+
+## Common Use Cases
+
+### Clothing Products
+
+```json
+{
+  "attributes": ["Color", "Size"],
+  "variants": [
+    {"sku": "SHIRT-RED-M", "attributes": [{"attribute": "Color", "value": "Red"}, {"attribute": "Size", "value": "M"}]},
+    {"sku": "SHIRT-BLU-L", "attributes": [{"attribute": "Color", "value": "Blue"}, {"attribute": "Size", "value": "L"}]}
+  ]
+}
+```
+
+### Electronics Products
+
+```json
+{
+  "attributes": ["Storage", "Color"],
+  "variants": [
+    {"sku": "PHONE-128-BLK", "price_adjustment": "0.00", "attributes": [{"attribute": "Storage", "value": "128GB"}, {"attribute": "Color", "value": "Black"}]},
+    {"sku": "PHONE-256-BLK", "price_adjustment": "100.00", "attributes": [{"attribute": "Storage", "value": "256GB"}, {"attribute": "Color", "value": "Black"}]}
+  ]
+}
+```
+
+### Standalone Products
+
+```json
+{
+  "is_standalone": true,
+  "variants": [
+    {
+      "sku": "BOOK-001",
+      "is_default": true,
+      "price_adjustment": "0.00",
+      "attributes": []
+    }
+  ]
+}
+```
+
+## Notes
+
+- Variants are ordered by `quantity_sold` in descending order
+- Inactive variants (`is_active=False`) are excluded from customer-facing displays
+- Product rating is shared across all variants
+- Media files are associated with the product, not individual variants
+- Variant stock updates automatically recalculate product-level totals
+- Each variant must have a unique combination of attributes within a product

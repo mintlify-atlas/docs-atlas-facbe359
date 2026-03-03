@@ -1,0 +1,130 @@
+---
+title: 'Get Checkout Details'
+api: 'GET /api/v1/payments/checkout/order/{id}/'
+description: 'Retrieve checkout information and generate Braintree client token for payment processing'
+---
+
+## Overview
+
+This endpoint retrieves order details and generates a Braintree client token required for payment processing. The client token is used to initialize the Braintree Drop-in UI or hosted fields on the frontend.
+
+<Info>
+  This endpoint returns an HTML template response containing the order details and client token. It's designed to render a payment form in the browser.
+</Info>
+
+## Authentication
+
+This endpoint requires authentication. Include a valid authentication token in the request headers.
+
+```http
+Authorization: Bearer <your_token>
+```
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The UUID of the order to process payment for. Must belong to the authenticated customer.
+</ParamField>
+
+## Response
+
+Returns an HTML template response with the following context:
+
+<ResponseField name="client_token" type="string">
+  Braintree client token for initializing the payment form. This token is generated server-side and is valid for 24 hours.
+</ResponseField>
+
+<ResponseField name="order" type="object">
+  Complete order details including:
+  
+  <Expandable title="Order object properties">
+    <ResponseField name="id" type="string">
+      Order UUID
+    </ResponseField>
+    
+    <ResponseField name="customer" type="object">
+      Customer information including first_name, last_name, and email
+    </ResponseField>
+    
+    <ResponseField name="billing_address" type="object">
+      Billing address details including street_address, city, state, postal_code, and country
+    </ResponseField>
+    
+    <ResponseField name="items" type="array">
+      Array of order items with product details, quantities, and prices
+    </ResponseField>
+    
+    <ResponseField name="subtotal" type="number">
+      Order subtotal before shipping and discounts
+    </ResponseField>
+    
+    <ResponseField name="amount_saved" type="number">
+      Total discount amount applied to the order
+    </ResponseField>
+    
+    <ResponseField name="shipping" type="number">
+      Total shipping cost
+    </ResponseField>
+    
+    <ResponseField name="total_amount" type="number">
+      Final order total (subtotal + shipping - discounts)
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Current order status (awaiting_payment, paid, delivered, or cancelled)
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Payment Flow
+
+The typical payment flow using this endpoint:
+
+1. Customer creates an order through the shopping cart
+2. **GET** this endpoint to retrieve the client token and order details
+3. Initialize Braintree Drop-in UI with the client token
+4. Customer enters payment information in the Braintree form
+5. Submit payment using the [Process Payment endpoint](/api/payments/process-payment)
+
+## Error Responses
+
+<ResponseExample>
+```json 401 Unauthorized
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+```json 404 Not Found
+{
+  "detail": "Not found."
+}
+```
+</ResponseExample>
+
+<Note>
+  The order must belong to the authenticated customer. Attempting to access another customer's order will result in a 404 error.
+</Note>
+
+## Braintree Integration
+
+This endpoint integrates with Braintree's payment gateway:
+
+- **Environment**: Sandbox (for testing)
+- **Configuration**: Set via environment variables in `config/settings.py`
+  - `BRAINTREE_MERCHANT_ID`
+  - `BRAINTREE_PUBLIC_KEY`
+  - `BRAINTREE_PRIVATE_KEY`
+
+<Tip>
+  The client token is generated using `gateway.client_token.generate()` and is required for secure client-side payment form initialization.
+</Tip>
+
+## Related Endpoints
+
+- [Process Payment](/api/payments/process-payment) - Submit payment for the order
+- [Get Order Details](/api/orders/get-order) - Retrieve order information without payment context
+
+## Code Reference
+
+Implementation: `payments/views.py:29`

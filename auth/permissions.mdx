@@ -1,0 +1,421 @@
+---
+title: Permissions & Access Control
+description: Understand permission classes and how access control works in the E-commerce API
+---
+
+The E-commerce API uses Django REST Framework's permission system to control access to resources. This page covers the built-in and custom permission classes used throughout the API.
+
+## Default Permission Policy
+
+By default, all API endpoints require authentication (configured in `config/settings.py:167-182`):
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated'
+    ],
+}
+```
+
+<Warning>
+  Unless explicitly overridden with `permission_classes`, all endpoints require a valid JWT token.
+</Warning>
+
+## Built-in Permission Classes
+
+The API uses Django REST Framework's built-in permission classes:
+
+### IsAuthenticated
+
+**Purpose**: Requires user to be authenticated
+
+**Behavior**: 
+- Denies access to unauthenticated users
+- Allows access to any authenticated user
+- Used as the default for most endpoints
+
+**Example Usage**:
+```python
+from rest_framework.permissions import IsAuthenticated
+
+class SomeView(APIView):
+    permission_classes = [IsAuthenticated]
+```
+
+### AllowAny
+
+**Purpose**: Allows unrestricted access
+
+**Behavior**:
+- Allows access to both authenticated and unauthenticated users
+- Used for public endpoints like registration and token generation
+
+**Example Endpoints**:
+- `POST /api/v1/customers/` - Customer registration (see `customers/views.py:30`)
+- `POST /auth/token/` - Token generation
+- `POST /auth/token/refresh/` - Token refresh
+
+**Example Usage**:
+```python
+from rest_framework.permissions import AllowAny
+
+class CustomerCreateView(CreateAPIView):
+    permission_classes = [AllowAny]
+```
+
+## Custom Permission Classes
+
+The API implements custom permission classes for resource-specific access control.
+
+### CustomerOnly
+
+**Location**: `customers/permissions.py:4-7`
+
+**Purpose**: Ensures customers can only access their own data
+
+**Implementation**:
+```python
+from rest_framework.permissions import BasePermission
+
+class CustomerOnly(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        return request.user == obj
+```
+
+**Behavior**:
+- Checks object-level permissions
+- Returns `True` only if the authenticated user matches the object
+- Used for customer profile operations (GET, PUT, DELETE)
+
+**Used By**:
+- `CustomerInstanceView` (see `customers/views.py:53-73`)
+
+**Example Scenarios**:
+
+<AccordionGroup>
+  <Accordion title="Allowed: Customer accessing own profile">
+    ```bash
+    # User ID 5 accessing their own profile
+    GET /api/v1/customers/5/
+    Authorization: Bearer <token_for_user_5>
+    
+    # ✓ Allowed - user matches object
+    ```
+  </Accordion>
+
+  <Accordion title="Denied: Customer accessing another's profile">
+    ```bash
+    # User ID 5 trying to access user ID 3's profile
+    GET /api/v1/customers/3/
+    Authorization: Bearer <token_for_user_5>
+    
+    # ✗ Denied - user doesn't match object
+    # Returns 403 Forbidden
+    ```
+  </Accordion>
+</AccordionGroup>
+
+### VendorOnly
+
+**Location**: `stores/permissions.py:4-8`
+
+**Purpose**: Restricts access to vendor-owned resources
+
+**Implementation**:
+```python
+from rest_framework.permissions import BasePermission
+
+class VendorOnly(BasePermission):
+    def has_object_permission(self, request, view, obj):
+        if request.user.is_authenticated and request.user.is_vendor:
+            return bool(request.user == obj.owner)
+```
+
+**Behavior**:
+- Requires user to be authenticated
+- Requires user to have `is_vendor=True` flag
+- Requires user to be the owner of the object
+- Used for store management operations
+
+**Requirements**:
+1. User must be authenticated
+2. User must have vendor status (`customer.is_vendor == True`)
+3. User must own the resource (`request.user == obj.owner`)
+
+### VendorCreateOnly
+
+**Location**: `stores/permissions.py:11-14`
+
+**Purpose**: Allows only vendors to create certain resources
+
+**Implementation**:
+```python
+from rest_framework.permissions import BasePermission
+
+class VendorCreateOnly(BasePermission):
+    def has_permission(self, request, view):
+        return bool(request.user.is_authenticated and request.user.is_vendor)
+```
+
+**Behavior**:
+- Checks view-level permissions (not object-level)
+- Requires user to be authenticated and have vendor status
+- Used for creating stores or vendor-specific resources
+
+**Example**:
+```bash
+# Only vendors can create stores
+POST /api/v1/stores/
+Authorization: Bearer <vendor_token>
+
+# Regular customers will receive 403 Forbidden
+```
+
+## Permission Evaluation Flow
+
+<Steps>
+  <Step title="Request Received">
+    API receives request with Authorization header
+  </Step>
+  
+  <Step title="Authentication">
+    JWT token is validated and user object is loaded
+  </Step>
+  
+  <Step title="View-Level Permissions">
+    `has_permission()` methods are checked (e.g., `VendorCreateOnly`)
+  </Step>
+  
+  <Step title="Object Retrieved">
+    For detail views, the object is fetched from the database
+  </Step>
+  
+  <Step title="Object-Level Permissions">
+    `has_object_permission()` methods are checked (e.g., `CustomerOnly`, `VendorOnly`)
+  </Step>
+  
+  <Step title="Access Granted or Denied">
+    Request proceeds or returns 403 Forbidden
+  </Step>
+</Steps>
+
+## Customer Model Permissions
+
+The `Customer` model includes fields that affect permissions:
+
+### is_vendor Flag
+
+**Field**: `customers.models.Customer.is_vendor` (see `customers/models.py:45`)
+
+**Type**: `BooleanField(default=False)`
+
+**Purpose**: Determines if a customer has vendor privileges
+
+**Usage**:
+```python
+# Check if user is a vendor
+if request.user.is_vendor:
+    # Allow vendor-specific operations
+```
+
+**Effects**:
+- Controls access to vendor endpoints
+- Required for `VendorOnly` and `VendorCreateOnly` permissions
+- Separate from Django's built-in staff/superuser flags
+
+### is_active Flag
+
+**Field**: Inherited from `AbstractUser`
+
+**Purpose**: Indicates if the account is active
+
+**Behavior**:
+- Inactive accounts cannot authenticate
+- When a customer is "deleted", `is_active` is set to `False` (see `customers/views.py:70-73`):
+  ```python
+  def delete(self, request, *args, **kwargs):
+      instance = self.get_object()
+      instance.is_active = False
+      return Response(status=status.HTTP_204_NO_CONTENT)
+  ```
+
+<Info>
+  Account deletion is a soft delete - the account is deactivated rather than removed from the database.
+</Info>
+
+## Combining Permissions
+
+You can require multiple permissions by passing a list:
+
+```python
+from rest_framework.permissions import IsAuthenticated
+from customers.permissions import CustomerOnly
+
+class MyView(APIView):
+    permission_classes = [IsAuthenticated, CustomerOnly]
+```
+
+**Behavior**: All permission classes must return `True` for access to be granted.
+
+## Common Permission Patterns
+
+### Public Endpoint
+
+```python
+from rest_framework.permissions import AllowAny
+from rest_framework.generics import CreateAPIView
+
+class CustomerCreateView(CreateAPIView):
+    permission_classes = [AllowAny]
+    # Anyone can register
+```
+
+### Authenticated Users Only
+
+```python
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+
+class SomeView(APIView):
+    permission_classes = [IsAuthenticated]
+    # Any authenticated user can access
+```
+
+### Resource Owner Only
+
+```python
+from customers.permissions import CustomerOnly
+from rest_framework.generics import RetrieveUpdateDestroyAPIView
+
+class CustomerInstanceView(RetrieveUpdateDestroyAPIView):
+    permission_classes = [CustomerOnly]
+    # Only the customer who owns this profile can access
+```
+
+### Vendor-Only Access
+
+```python
+from stores.permissions import VendorCreateOnly
+from rest_framework.generics import CreateAPIView
+
+class StoreCreateView(CreateAPIView):
+    permission_classes = [VendorCreateOnly]
+    # Only vendors can create stores
+```
+
+## Error Responses
+
+### 401 Unauthorized
+
+Returned when authentication credentials are missing or invalid:
+
+```json
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+**Common Causes**:
+- Missing Authorization header
+- Invalid or expired JWT token
+- Malformed token format
+
+### 403 Forbidden
+
+Returned when user is authenticated but lacks permission:
+
+```json
+{
+  "detail": "You do not have permission to perform this action."
+}
+```
+
+**Common Causes**:
+- Non-vendor trying to access vendor endpoints
+- Customer trying to access another customer's data
+- User lacking required flags (`is_vendor`, `is_active`, etc.)
+
+## Testing Permissions
+
+### Test as Anonymous User
+
+```bash
+curl https://api.example.com/api/v1/customers/1/
+# Expected: 401 Unauthorized (if IsAuthenticated required)
+```
+
+### Test as Authenticated User
+
+```bash
+curl https://api.example.com/api/v1/customers/1/ \
+  -H "Authorization: Bearer <access_token>"
+# Expected: 200 OK (if user ID matches) or 403 Forbidden (if doesn't match)
+```
+
+### Test as Vendor
+
+```bash
+# User must have is_vendor=True in their customer record
+curl -X POST https://api.example.com/api/v1/stores/ \
+  -H "Authorization: Bearer <vendor_access_token>" \
+  -H "Content-Type: application/json" \
+  -d '{"name": "My Store", ...}'
+# Expected: 201 Created (if vendor) or 403 Forbidden (if not vendor)
+```
+
+## Best Practices
+
+<AccordionGroup>
+  <Accordion title="Use Specific Permissions">
+    Don't rely solely on `IsAuthenticated`. Use custom permissions like `CustomerOnly` or `VendorOnly` to enforce proper access control.
+    
+    ```python
+    # ❌ Too permissive
+    permission_classes = [IsAuthenticated]
+    
+    # ✅ Properly restricted
+    permission_classes = [CustomerOnly]
+    ```
+  </Accordion>
+
+  <Accordion title="Check Permissions Early">
+    The `CustomerInstanceView` checks permissions in `dispatch()` to fail fast:
+    
+    ```python
+    def dispatch(self, request, *args, **kwargs):
+        if request.method.lower() != "get":
+            self.check_object_permissions(request, self.get_object())
+        return super().dispatch(request, args, kwargs)
+    ```
+  </Accordion>
+
+  <Accordion title="Handle Permission Errors Gracefully">
+    ```python
+    import requests
+    
+    response = requests.get(url, headers=headers)
+    
+    if response.status_code == 401:
+        # Re-authenticate or refresh token
+        print("Authentication required")
+    elif response.status_code == 403:
+        # User doesn't have permission
+        print("Access denied")
+    ```
+  </Accordion>
+
+  <Accordion title="Document Permission Requirements">
+    Always document which permissions are required for each endpoint in your API documentation.
+  </Accordion>
+</AccordionGroup>
+
+## Related Topics
+
+<CardGroup cols={2}>
+  <Card title="Authentication Overview" icon="lock" href="/auth/overview">
+    Learn about the JWT authentication system
+  </Card>
+  <Card title="Registration" icon="user-plus" href="/auth/registration">
+    Create customer accounts with proper permissions
+  </Card>
+</CardGroup>

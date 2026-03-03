@@ -1,0 +1,244 @@
+---
+title: Customer Registration
+description: Create new customer accounts in the E-commerce API
+---
+
+Customer registration allows new users to create accounts in the system. This endpoint is publicly accessible and does not require authentication.
+
+## Create Customer Account
+
+<Note>
+  This endpoint is defined in `customers/views.py:28-31` and uses the `CustomerCreateView` class.
+</Note>
+
+### Endpoint
+
+```
+POST /api/v1/customers/
+```
+
+### Permission
+
+- **AllowAny** - No authentication required
+
+### Request Body
+
+<ParamField body="email" type="string" required>
+  Customer's email address (used as the primary identifier)
+</ParamField>
+
+<ParamField body="first_name" type="string" required>
+  Customer's first name
+</ParamField>
+
+<ParamField body="last_name" type="string" required>
+  Customer's last name
+</ParamField>
+
+<ParamField body="password" type="string" required>
+  Account password (validated against Django's password validators)
+</ParamField>
+
+<ParamField body="password2" type="string" required>
+  Password confirmation (must match password)
+</ParamField>
+
+<ParamField body="date_of_birth" type="string">
+  Customer's date of birth in YYYY-MM-DD format
+</ParamField>
+
+### Password Validation
+
+Passwords are validated using Django's built-in validators (configured in `config/settings.py:120-133`):
+
+- **UserAttributeSimilarityValidator** - Password cannot be too similar to user attributes
+- **MinimumLengthValidator** - Minimum password length requirement
+- **CommonPasswordValidator** - Password cannot be a commonly used password
+- **NumericPasswordValidator** - Password cannot be entirely numeric
+
+### Example Request
+
+<CodeGroup>
+```bash curl
+curl -X POST https://api.example.com/api/v1/customers/ \
+  -H "Content-Type: application/json" \
+  -d '{
+    "email": "john.doe@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "password": "SecurePass123!",
+    "password2": "SecurePass123!",
+    "date_of_birth": "1990-05-15"
+  }'
+```
+
+```python Python
+import requests
+
+data = {
+    "email": "john.doe@example.com",
+    "first_name": "John",
+    "last_name": "Doe",
+    "password": "SecurePass123!",
+    "password2": "SecurePass123!",
+    "date_of_birth": "1990-05-15"
+}
+
+response = requests.post(
+    "https://api.example.com/api/v1/customers/",
+    json=data
+)
+
+print(response.json())
+```
+
+```javascript JavaScript
+const response = await fetch('https://api.example.com/api/v1/customers/', {
+  method: 'POST',
+  headers: {
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    email: 'john.doe@example.com',
+    first_name: 'John',
+    last_name: 'Doe',
+    password: 'SecurePass123!',
+    password2: 'SecurePass123!',
+    date_of_birth: '1990-05-15'
+  })
+});
+
+const data = await response.json();
+```
+</CodeGroup>
+
+### Response
+
+<ResponseField name="email" type="string">
+  Customer's email address
+</ResponseField>
+
+<ResponseField name="first_name" type="string">
+  Customer's first name
+</ResponseField>
+
+<ResponseField name="last_name" type="string">
+  Customer's last name
+</ResponseField>
+
+<ResponseField name="slug" type="string">
+  Auto-generated slug from customer's full name
+</ResponseField>
+
+<ResponseField name="date_of_birth" type="string">
+  Customer's date of birth
+</ResponseField>
+
+<ResponseField name="address" type="object" nullable>
+  Customer's address (null for new registrations)
+</ResponseField>
+
+<ResponseField name="last_purchase_date" type="string" nullable>
+  Date of last purchase (null for new customers)
+</ResponseField>
+
+### Success Response (201 Created)
+
+```json
+{
+  "email": "john.doe@example.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "slug": "john-doe",
+  "date_of_birth": "1990-05-15",
+  "address": null,
+  "last_purchase_date": null
+}
+```
+
+### Error Responses
+
+<AccordionGroup>
+  <Accordion title="400 Bad Request - Password Mismatch">
+    ```json
+    {
+      "error": "Passwords don't match"
+    }
+    ```
+    
+    This error occurs when `password` and `password2` fields don't match (validated in `customers/serializers.py:39-44`).
+  </Accordion>
+
+  <Accordion title="400 Bad Request - Weak Password">
+    ```json
+    {
+      "password": [
+        "This password is too common.",
+        "This password is entirely numeric."
+      ]
+    }
+    ```
+    
+    Password fails Django's password validation rules.
+  </Accordion>
+
+  <Accordion title="400 Bad Request - Email Already Exists">
+    ```json
+    {
+      "email": [
+        "customer with this email address already exists."
+      ]
+    }
+    ```
+    
+    The email is already registered in the system (emails must be unique).
+  </Accordion>
+
+  <Accordion title="400 Bad Request - Missing Required Fields">
+    ```json
+    {
+      "first_name": [
+        "This field is required."
+      ],
+      "last_name": [
+        "This field is required."
+      ]
+    }
+    ```
+    
+    Required fields are missing from the request.
+  </Accordion>
+</AccordionGroup>
+
+## Customer Model Structure
+
+The `Customer` model (defined in `customers/models.py:32-67`) extends Django's `AbstractUser` with the following custom fields:
+
+| Field | Type | Description |
+|-------|------|-------------|
+| `email` | EmailField | Primary identifier (unique, indexed) |
+| `slug` | AutoSlugField | Auto-generated from full name |
+| `date_of_birth` | DateField | Customer's birth date |
+| `address` | OneToOneField | Reference to Address model |
+| `is_vendor` | BooleanField | Vendor status flag |
+| `last_purchase_date` | DateTimeField | Last purchase timestamp |
+| `products_bought_count` | PositiveIntegerField | Total products purchased |
+| `total_units_bought` | PositiveIntegerField | Total units purchased |
+| `products_bought` | ManyToManyField | Products purchased by customer |
+| `redeemed_vouchers` | ManyToManyField | Vouchers redeemed by customer |
+
+<Info>
+  The `username` field is explicitly set to `None` and `email` is used as the `USERNAME_FIELD` (see `customers/models.py:54-56`).
+</Info>
+
+## After Registration
+
+Once a customer account is created:
+
+1. **Obtain tokens** - Use the `/auth/token/` endpoint to get access and refresh tokens
+2. **Update profile** - Add address information and other details
+3. **Start shopping** - Browse products and make purchases
+
+<Card title="Next: Obtain JWT Tokens" icon="arrow-right" href="/auth/tokens">
+  Learn how to authenticate with your new account and obtain JWT tokens
+</Card>

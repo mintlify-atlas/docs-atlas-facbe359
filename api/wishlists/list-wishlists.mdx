@@ -1,0 +1,160 @@
+---
+title: 'List Wishlists'
+openapi: 'GET /api/v1/wishlists/'
+---
+
+Retrieve all wishlists for the authenticated user. You can optionally filter wishlists by searching for specific names or products.
+
+## Authentication
+
+This endpoint requires authentication. Include a valid bearer token in the Authorization header.
+
+## Query Parameters
+
+<ParamField query="search" type="string">
+  Search wishlists by name or product name. This performs a partial match across wishlist names and product names within the wishlists.
+</ParamField>
+
+## Response
+
+Returns an array of wishlist objects. Each wishlist includes:
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the wishlist
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Name of the wishlist
+</ResponseField>
+
+<ResponseField name="owner" type="string">
+  Display name of the wishlist owner
+</ResponseField>
+
+<ResponseField name="audience" type="string">
+  Visibility setting for the wishlist. Options: `private`, `public`, or `shared`
+  
+  - `private`: Only the owner can view the wishlist
+  - `public`: Anyone can view the wishlist
+  - `shared`: Only users with the sharing URL can view the wishlist
+</ResponseField>
+
+<ResponseField name="note" type="string">
+  Optional notes about the wishlist
+</ResponseField>
+
+<ResponseField name="items" type="array">
+  Array of wishlist items
+  
+  <Expandable title="WishlistItem properties">
+    <ResponseField name="id" type="integer">
+      Unique identifier for the wishlist item
+    </ResponseField>
+    
+    <ResponseField name="product" type="object">
+      Product details for this wishlist item
+    </ResponseField>
+    
+    <ResponseField name="added_at" type="string">
+      Timestamp when the product was added to the wishlist
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="absolute_url" type="string">
+  Direct URL to access this wishlist
+</ResponseField>
+
+<ResponseField name="public_url" type="string">
+  Public URL for the wishlist (only available if audience is `public`)
+</ResponseField>
+
+<ResponseField name="sharing_url" type="string">
+  Shareable URL with token for the wishlist (only available if audience is `shared`)
+</ResponseField>
+
+<ResponseField name="created" type="string">
+  Timestamp when the wishlist was created
+</ResponseField>
+
+<ResponseField name="updated" type="string">
+  Timestamp when the wishlist was last updated
+</ResponseField>
+
+## Example Request
+
+```bash cURL
+curl --request GET \
+  --url 'https://api.example.com/api/v1/wishlists/' \
+  --header 'Authorization: Bearer YOUR_TOKEN'
+```
+
+```bash Search Wishlists
+curl --request GET \
+  --url 'https://api.example.com/api/v1/wishlists/?search=birthday' \
+  --header 'Authorization: Bearer YOUR_TOKEN'
+```
+
+## Example Response
+
+```json 200 - Success
+[
+  {
+    "id": 1,
+    "name": "Birthday Wishlist",
+    "owner": "john.doe@example.com",
+    "audience": "shared",
+    "note": "Items I'd like for my birthday",
+    "items": [
+      {
+        "id": 10,
+        "product": {
+          "id": 123,
+          "name": "Wireless Headphones",
+          "price": "79.99",
+          "image_url": "https://example.com/images/headphones.jpg"
+        },
+        "added_at": "2026-02-15T10:30:00Z"
+      },
+      {
+        "id": 11,
+        "product": {
+          "id": 456,
+          "name": "Smart Watch",
+          "price": "249.99",
+          "image_url": "https://example.com/images/watch.jpg"
+        },
+        "added_at": "2026-02-18T14:22:00Z"
+      }
+    ],
+    "absolute_url": "/api/v1/wishlists/1/",
+    "public_url": null,
+    "sharing_url": "/api/v1/wishlists/shared/abc123def456/",
+    "created": "2026-02-15T10:25:00Z",
+    "updated": "2026-02-18T14:22:00Z"
+  },
+  {
+    "id": 2,
+    "name": "Holiday Shopping",
+    "owner": "john.doe@example.com",
+    "audience": "private",
+    "note": null,
+    "items": [],
+    "absolute_url": "/api/v1/wishlists/2/",
+    "public_url": null,
+    "sharing_url": null,
+    "created": "2026-03-01T08:15:00Z",
+    "updated": "2026-03-01T08:15:00Z"
+  }
+]
+```
+
+```json 401 - Unauthorized
+{
+  "detail": "Authentication credentials were not provided."
+}
+```
+
+<Note>
+  The `sharing_url` is automatically generated when a wishlist's audience is set to `shared`. Use this URL to share the wishlist with others without requiring authentication.
+</Note>

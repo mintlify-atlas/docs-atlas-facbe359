@@ -1,0 +1,311 @@
+---
+title: 'Architecture Overview'
+description: 'Understand the Django app structure, API versioning, and key architectural patterns'
+---
+
+## Overview
+
+This E-commerce API is built with Django and Django REST Framework, following a modular app-based architecture that separates concerns and promotes code reusability.
+
+## Django App Structure
+
+The API is organized into multiple Django applications, each handling a specific domain:
+
+<CardGroup cols={2}>
+  <Card title="Catalogue" icon="box">
+    Product management including categories, variants, attributes, media, and reviews
+  </Card>
+  <Card title="Orders" icon="receipt">
+    Order processing and order item management
+  </Card>
+  <Card title="Customers" icon="users">
+    Customer accounts, authentication, and address management
+  </Card>
+  <Card title="Cart" icon="shopping-cart">
+    Shopping cart functionality and item management
+  </Card>
+  <Card title="Discount" icon="tag">
+    Promotional offers, vouchers, and discount conditions
+  </Card>
+  <Card title="Payments" icon="credit-card">
+    Payment processing with Braintree integration
+  </Card>
+  <Card title="Stores" icon="store">
+    Multi-vendor store management
+  </Card>
+  <Card title="Wishlist" icon="heart">
+    Customer wishlists and saved items
+  </Card>
+</CardGroup>
+
+### App Location
+
+All apps are located in `~/workspace/source/` directory:
+
+```
+source/
+├── catalogue/      # Product catalog management
+├── orders/         # Order processing
+├── customers/      # Customer accounts
+├── cart/           # Shopping cart
+├── discount/       # Offers and vouchers
+├── payments/       # Payment processing
+├── stores/         # Store management
+├── vendors/        # Vendor management
+├── wishlist/       # Wishlists
+└── config/         # Project configuration
+```
+
+## API Versioning
+
+The API uses URL path versioning with the current version being **v1**.
+
+### Base URL Structure
+
+```
+http://your-domain.com/api/v1/{endpoint}
+```
+
+### Example Endpoints
+
+<CodeGroup>
+```bash Products
+GET /api/v1/products/
+```
+
+```bash Orders
+GET /api/v1/orders/
+```
+
+```bash Categories
+GET /api/v1/categories/
+```
+</CodeGroup>
+
+<Note>
+  All endpoints shown in this documentation are relative to the `/api/v1/` base path.
+</Note>
+
+### URL Configuration
+
+Versioning is configured in `config/urls.py:63`:
+
+```python
+path("api/v1/", include(urls)),
+```
+
+## Key Architectural Patterns
+
+### Abstract Base Models
+
+The API uses abstract base models to share common functionality across apps. Located in `catalogue/abstract.py`, these models provide:
+
+#### Timestamp Model
+
+```python
+class Timestamp(models.Model):
+    created = models.DateTimeField(auto_now_add=True)
+    updated = models.DateTimeField(auto_now=True)
+```
+
+Automatically tracks creation and modification times for all models.
+
+#### BaseModel
+
+```python
+class BaseModel(Timestamp):
+    is_active = models.BooleanField(default=True)
+    
+    objects = models.Manager()
+    active_objects = ActiveObjectsManager()
+```
+
+**Features:**
+- Inherits timestamp tracking
+- Soft delete support via `is_active` flag
+- Dual managers: `objects` (all records) and `active_objects` (active only)
+
+**Used by:** Product, ProductVariant, ProductMedia, Review, Order, OrderItem, Offer
+
+#### TimeBased Model
+
+```python
+class TimeBased(BaseModel):
+    valid_from = models.DateTimeField()
+    valid_to = models.DateTimeField()
+```
+
+**Features:**
+- Extends BaseModel with time-based validity
+- Automatic validation ensuring `valid_to` > `valid_from`
+
+**Used by:** Offer, Voucher
+
+### Manager Classes
+
+Custom managers provide filtered querysets for common use cases:
+
+#### ActiveObjectsManager
+
+```python
+class ActiveObjectsManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(is_active=True)
+```
+
+Automatically filters out soft-deleted records.
+
+**Usage Example:**
+```python
+# Get all active products
+Product.active_objects.all()
+
+# Get all products (including inactive)
+Product.objects.all()
+```
+
+#### ActiveOfferManager
+
+```python
+class ActiveOfferManager(models.Manager):
+    def get_queryset(self):
+        return super().get_queryset().filter(
+            valid_from__lte=datetime.now(timezone.utc),
+            valid_to__gt=datetime.now(timezone.utc),
+            is_active=True,
+        )
+```
+
+Filters offers and vouchers to only those currently valid.
+
+**Usage Example:**
+```python
+# Get currently valid offers
+Offer.active_objects.all()
+
+# Get currently valid vouchers
+Voucher.active_objects.all()
+```
+
+### Authentication
+
+The API supports multiple authentication methods configured in `config/settings.py:167-174`:
+
+<Tabs>
+  <Tab title="JWT (Recommended)">
+    JSON Web Token authentication with access and refresh tokens.
+    
+    ```python
+    REST_FRAMEWORK = {
+        'DEFAULT_AUTHENTICATION_CLASSES': [
+            'rest_framework_simplejwt.authentication.JWTAuthentication',
+        ],
+    }
+    ```
+    
+    **Token Lifetime:**
+    - Access Token: 1 hour
+    - Refresh Token: 3 days
+  </Tab>
+  
+  <Tab title="Basic Auth">
+    HTTP Basic Authentication for testing and development.
+    
+    ```python
+    REST_FRAMEWORK = {
+        'DEFAULT_AUTHENTICATION_CLASSES': [
+            'rest_framework.authentication.BasicAuthentication',
+        ],
+    }
+    ```
+  </Tab>
+</Tabs>
+
+### Permission System
+
+Default permission requires authentication:
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated'
+    ],
+}
+```
+
+Individual views can override this:
+
+```python
+class ProductListView(GenericAPIView):
+    permission_classes = [AllowAny]  # Public access
+```
+
+### Database Configuration
+
+Supports both PostgreSQL (production) and SQLite (development):
+
+```python
+DATABASES = {
+    'PG_DB': {
+        'ENGINE': 'django.db.backends.postgresql',
+        # ... PostgreSQL config
+    },
+    'default': {
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite'
+    }
+}
+```
+
+### Custom User Model
+
+Uses email-based authentication instead of username:
+
+```python
+AUTH_USER_MODEL = 'customers.Customer'
+
+class Customer(AbstractUser):
+    email = models.EmailField(unique=True, db_index=True)
+    username = None
+    
+    USERNAME_FIELD = "email"
+    REQUIRED_FIELDS = ["first_name", "last_name"]
+```
+
+## Design Principles
+
+<AccordionGroup>
+  <Accordion title="Separation of Concerns">
+    Each Django app handles a specific domain with clear boundaries. For example, `catalogue` manages products, while `orders` handles order processing.
+  </Accordion>
+  
+  <Accordion title="Reusable Components">
+    Abstract base models and managers are shared across apps, reducing code duplication and ensuring consistent behavior.
+  </Accordion>
+  
+  <Accordion title="Soft Deletes">
+    Records are marked inactive rather than deleted, preserving data integrity and audit trails.
+  </Accordion>
+  
+  <Accordion title="Database Indexing">
+    Strategic indexes on frequently queried fields improve performance:
+    - Product: `category`, `is_available`
+    - Order: `customer`, `status`, `created`
+    - Offer: `valid_from`, `valid_to`, `store`
+  </Accordion>
+  
+  <Accordion title="Multi-tenancy Support">
+    Store foreign keys enable multi-vendor marketplace functionality.
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Data Models" icon="database" href="/concepts/data-models">
+    Explore the core data models and their relationships
+  </Card>
+  <Card title="Filtering & Pagination" icon="filter" href="/concepts/filtering-pagination">
+    Learn how to filter, search, and paginate API results
+  </Card>
+</CardGroup>

@@ -1,0 +1,682 @@
+---
+title: "Product Reviews"
+description: "Manage customer reviews and ratings for products"
+---
+
+## List Product Reviews
+
+Retrieve all reviews for a specific product.
+
+<CodeGroup>
+```bash GET
+GET /api/v1/products/{product_id}/reviews/
+```
+</CodeGroup>
+
+### Authentication
+
+This endpoint does not require authentication. It is publicly accessible.
+
+### Path Parameters
+
+<ParamField path="product_id" type="integer" required>
+  The unique identifier of the product
+</ParamField>
+
+### Response
+
+Returns an array of review objects.
+
+<ResponseField name="id" type="integer">
+  Unique review identifier
+</ResponseField>
+
+<ResponseField name="user" type="string">
+  Username of the reviewer
+</ResponseField>
+
+<ResponseField name="review_text" type="string">
+  The review content/comments
+</ResponseField>
+
+<ResponseField name="rating" type="integer">
+  Rating value (1-5):
+  - 1: Very Bad
+  - 2: Unsatisfied
+  - 3: Just There
+  - 4: Satisfied
+  - 5: Very Satisfied
+</ResponseField>
+
+<ResponseField name="sentiment" type="string">
+  Analyzed sentiment of the review (can be null):
+  - `POSITIVE` - Positive sentiment
+  - `Neutral` - Neutral sentiment
+  - `Negative` - Negative sentiment
+</ResponseField>
+
+<ResponseField name="sentiment_score" type="float">
+  Numerical sentiment score between -1 and 1 (can be null)
+  - Positive values indicate positive sentiment
+  - Negative values indicate negative sentiment
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether the review is active and visible
+</ResponseField>
+
+<ResponseField name="created" type="string">
+  ISO 8601 timestamp of review creation
+</ResponseField>
+
+<ResponseField name="updated" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+<ResponseField name="reviewimage_set" type="array">
+  Array of images attached to the review
+  
+  <Expandable title="Review Image Object">
+    <ResponseField name="id" type="integer">
+      Image ID
+    </ResponseField>
+    
+    <ResponseField name="image" type="string">
+      URL to the review image
+    </ResponseField>
+    
+    <ResponseField name="is_primary" type="boolean">
+      Whether this is the primary review image
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+### Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.example.com/api/v1/products/1/reviews/" \
+  -H "Accept: application/json"
+```
+
+```python Python
+import requests
+
+product_id = 1
+url = f"https://api.example.com/api/v1/products/{product_id}/reviews/"
+response = requests.get(url)
+reviews = response.json()
+
+for review in reviews:
+    print(f"Rating: {review['rating']}/5")
+    print(f"Review: {review['review_text']}")
+    print(f"By: {review['user']}\n")
+```
+
+```javascript JavaScript
+const productId = 1;
+fetch(`https://api.example.com/api/v1/products/${productId}/reviews/`)
+  .then(response => response.json())
+  .then(reviews => {
+    reviews.forEach(review => {
+      console.log(`Rating: ${review.rating}/5`);
+      console.log(`Review: ${review.review_text}`);
+      console.log(`By: ${review.user}\n`);
+    });
+  });
+```
+</CodeGroup>
+
+### Response Example
+
+```json 200 OK
+[
+  {
+    "id": 15,
+    "user": "john_doe",
+    "review_text": "Excellent sound quality and comfortable for long listening sessions. The noise cancellation is impressive!",
+    "rating": 5,
+    "sentiment": "POSITIVE",
+    "sentiment_score": 0.92,
+    "is_active": true,
+    "created": "2024-02-20T15:45:00Z",
+    "updated": "2024-02-20T15:45:00Z",
+    "reviewimage_set": [
+      {
+        "id": 1,
+        "image": "https://cdn.example.com/reviews/headphones-review-1.jpg",
+        "is_primary": true
+      }
+    ]
+  },
+  {
+    "id": 16,
+    "user": "jane_smith",
+    "review_text": "Good product overall, but the battery life could be better. Works great for daily use.",
+    "rating": 4,
+    "sentiment": "POSITIVE",
+    "sentiment_score": 0.65,
+    "is_active": true,
+    "created": "2024-02-18T10:30:00Z",
+    "updated": "2024-02-18T10:30:00Z",
+    "reviewimage_set": []
+  }
+]
+```
+
+### Error Responses
+
+<ResponseField name="404" type="Not Found">
+  Product with the specified ID does not exist
+  
+  ```json
+  {
+    "detail": "Not found."
+  }
+  ```
+</ResponseField>
+
+---
+
+## Create Product Review
+
+Add a new review for a product. Only authenticated customers who have purchased the product can post reviews.
+
+<CodeGroup>
+```bash POST
+POST /api/v1/products/{product_id}/reviews/
+```
+</CodeGroup>
+
+### Authentication
+
+**Required:** User must be authenticated with a valid JWT token.
+
+<CodeGroup>
+```bash Authorization Header
+Authorization: Bearer <your_jwt_token>
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="product_id" type="integer" required>
+  The unique identifier of the product
+</ParamField>
+
+### Request Body
+
+<ParamField body="review_text" type="string" required>
+  The review content/comments
+</ParamField>
+
+<ParamField body="rating" type="integer" required>
+  Rating value (1-5):
+  - 1: Very Bad
+  - 2: Unsatisfied
+  - 3: Just There
+  - 4: Satisfied
+  - 5: Very Satisfied
+</ParamField>
+
+### Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X POST "https://api.example.com/api/v1/products/1/reviews/" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "review_text": "Amazing product! Exceeded my expectations.",
+    "rating": 5
+  }'
+```
+
+```python Python
+import requests
+
+product_id = 1
+url = f"https://api.example.com/api/v1/products/{product_id}/reviews/"
+headers = {
+    "Authorization": "Bearer YOUR_JWT_TOKEN",
+    "Content-Type": "application/json"
+}
+data = {
+    "review_text": "Amazing product! Exceeded my expectations.",
+    "rating": 5
+}
+
+response = requests.post(url, json=data, headers=headers)
+print(response.json())
+```
+
+```javascript JavaScript
+const productId = 1;
+fetch(`https://api.example.com/api/v1/products/${productId}/reviews/`, {
+  method: 'POST',
+  headers: {
+    'Authorization': 'Bearer YOUR_JWT_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    review_text: 'Amazing product! Exceeded my expectations.',
+    rating: 5
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+</CodeGroup>
+
+### Response Example
+
+```json 201 Created
+{
+  "success": "Review posted"
+}
+```
+
+### Error Responses
+
+<ResponseField name="400" type="Bad Request">
+  Invalid request data or user hasn't purchased the product
+  
+  ```json
+  {
+    "error": "You can't add a review for a product you didn't purchase."
+  }
+  ```
+  
+  Or with validation errors:
+  
+  ```json
+  {
+    "rating": ["A valid integer is required."],
+    "review_text": ["This field may not be blank."]
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Authentication credentials were not provided or are invalid
+  
+  ```json
+  {
+    "detail": "Authentication credentials were not provided."
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  Product with the specified ID does not exist
+  
+  ```json
+  {
+    "detail": "Not found."
+  }
+  ```
+</ResponseField>
+
+---
+
+## Get Specific Review
+
+Retrieve a single review by its ID.
+
+<CodeGroup>
+```bash GET
+GET /api/v1/products/{product_id}/reviews/{review_id}/
+```
+</CodeGroup>
+
+### Authentication
+
+This endpoint does not require authentication. It is publicly accessible.
+
+### Path Parameters
+
+<ParamField path="product_id" type="integer" required>
+  The unique identifier of the product
+</ParamField>
+
+<ParamField path="review_id" type="integer" required>
+  The unique identifier of the review
+</ParamField>
+
+### Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.example.com/api/v1/products/1/reviews/15/" \
+  -H "Accept: application/json"
+```
+</CodeGroup>
+
+### Response Example
+
+```json 200 OK
+{
+  "id": 15,
+  "user": "john_doe",
+  "review_text": "Excellent sound quality and comfortable for long listening sessions.",
+  "rating": 5,
+  "sentiment": "POSITIVE",
+  "sentiment_score": 0.92,
+  "is_active": true,
+  "created": "2024-02-20T15:45:00Z",
+  "updated": "2024-02-20T15:45:00Z",
+  "reviewimage_set": []
+}
+```
+
+### Error Responses
+
+<ResponseField name="404" type="Not Found">
+  Product or review with the specified ID does not exist
+  
+  ```json
+  {
+    "error": "Review doesn't exist"
+  }
+  ```
+</ResponseField>
+
+---
+
+## Update Review
+
+Update an existing review. Only the review author can update their own review.
+
+<CodeGroup>
+```bash PUT
+PUT /api/v1/products/{product_id}/reviews/{review_id}/
+```
+</CodeGroup>
+
+### Authentication
+
+**Required:** User must be authenticated and must be the author of the review.
+
+<CodeGroup>
+```bash Authorization Header
+Authorization: Bearer <your_jwt_token>
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="product_id" type="integer" required>
+  The unique identifier of the product
+</ParamField>
+
+<ParamField path="review_id" type="integer" required>
+  The unique identifier of the review
+</ParamField>
+
+### Request Body
+
+<ParamField body="review_text" type="string" required>
+  The updated review content/comments
+</ParamField>
+
+<ParamField body="rating" type="integer" required>
+  Updated rating value (1-5)
+</ParamField>
+
+### Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X PUT "https://api.example.com/api/v1/products/1/reviews/15/" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "review_text": "Updated: Still an amazing product after 3 months of use!",
+    "rating": 5
+  }'
+```
+
+```python Python
+import requests
+
+product_id = 1
+review_id = 15
+url = f"https://api.example.com/api/v1/products/{product_id}/reviews/{review_id}/"
+headers = {
+    "Authorization": "Bearer YOUR_JWT_TOKEN",
+    "Content-Type": "application/json"
+}
+data = {
+    "review_text": "Updated: Still an amazing product after 3 months of use!",
+    "rating": 5
+}
+
+response = requests.put(url, json=data, headers=headers)
+print(response.json())
+```
+
+```javascript JavaScript
+const productId = 1;
+const reviewId = 15;
+fetch(`https://api.example.com/api/v1/products/${productId}/reviews/${reviewId}/`, {
+  method: 'PUT',
+  headers: {
+    'Authorization': 'Bearer YOUR_JWT_TOKEN',
+    'Content-Type': 'application/json'
+  },
+  body: JSON.stringify({
+    review_text: 'Updated: Still an amazing product after 3 months of use!',
+    rating: 5
+  })
+})
+.then(response => response.json())
+.then(data => console.log(data));
+```
+</CodeGroup>
+
+### Response Example
+
+```json 200 OK
+{
+  "id": 15,
+  "user": "john_doe",
+  "review_text": "Updated: Still an amazing product after 3 months of use!",
+  "rating": 5,
+  "sentiment": "POSITIVE",
+  "sentiment_score": 0.92,
+  "is_active": true,
+  "created": "2024-02-20T15:45:00Z",
+  "updated": "2024-03-03T09:30:00Z",
+  "reviewimage_set": []
+}
+```
+
+### Error Responses
+
+<ResponseField name="400" type="Bad Request">
+  Invalid request data
+  
+  ```json
+  {
+    "rating": ["Ensure this value is less than or equal to 5."]
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="401" type="Unauthorized">
+  Authentication credentials were not provided
+  
+  ```json
+  {
+    "detail": "Authentication credentials were not provided."
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="403" type="Forbidden">
+  User is not the author of the review
+  
+  ```json
+  {
+    "detail": "You do not have permission to perform this action."
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  Product or review with the specified ID does not exist
+  
+  ```json
+  {
+    "error": "Review doesn't exist"
+  }
+  ```
+</ResponseField>
+
+---
+
+## Delete Review
+
+Delete a review. Only the review author can delete their own review.
+
+<CodeGroup>
+```bash DELETE
+DELETE /api/v1/products/{product_id}/reviews/{review_id}/
+```
+</CodeGroup>
+
+### Authentication
+
+**Required:** User must be authenticated and must be the author of the review.
+
+<CodeGroup>
+```bash Authorization Header
+Authorization: Bearer <your_jwt_token>
+```
+</CodeGroup>
+
+### Path Parameters
+
+<ParamField path="product_id" type="integer" required>
+  The unique identifier of the product
+</ParamField>
+
+<ParamField path="review_id" type="integer" required>
+  The unique identifier of the review
+</ParamField>
+
+### Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X DELETE "https://api.example.com/api/v1/products/1/reviews/15/" \
+  -H "Authorization: Bearer YOUR_JWT_TOKEN"
+```
+
+```python Python
+import requests
+
+product_id = 1
+review_id = 15
+url = f"https://api.example.com/api/v1/products/{product_id}/reviews/{review_id}/"
+headers = {"Authorization": "Bearer YOUR_JWT_TOKEN"}
+
+response = requests.delete(url, headers=headers)
+print(f"Status Code: {response.status_code}")
+```
+
+```javascript JavaScript
+const productId = 1;
+const reviewId = 15;
+fetch(`https://api.example.com/api/v1/products/${productId}/reviews/${reviewId}/`, {
+  method: 'DELETE',
+  headers: {
+    'Authorization': 'Bearer YOUR_JWT_TOKEN'
+  }
+})
+.then(response => {
+  console.log(`Status: ${response.status}`);
+});
+```
+</CodeGroup>
+
+### Response Example
+
+```bash 204 No Content
+(Empty response body)
+```
+
+### Error Responses
+
+<ResponseField name="401" type="Unauthorized">
+  Authentication credentials were not provided
+  
+  ```json
+  {
+    "detail": "Authentication credentials were not provided."
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="403" type="Forbidden">
+  User is not the author of the review
+  
+  ```json
+  {
+    "detail": "You do not have permission to perform this action."
+  }
+  ```
+</ResponseField>
+
+<ResponseField name="404" type="Not Found">
+  Product or review with the specified ID does not exist
+  
+  ```json
+  {
+    "error": "Review doesn't exist"
+  }
+  ```
+</ResponseField>
+
+---
+
+## Review Rules and Validation
+
+### Rating Scale
+
+Reviews use a 5-point rating scale:
+
+1. **Very Bad (1)** - Extremely dissatisfied
+2. **Unsatisfied (2)** - Below expectations
+3. **Just There (3)** - Meets basic expectations
+4. **Satisfied (4)** - Meets or slightly exceeds expectations
+5. **Very Satisfied (5)** - Exceeds expectations significantly
+
+### Review Requirements
+
+1. **Purchase Verification**: Users can only review products they have purchased
+2. **Authentication**: Creating, updating, and deleting reviews requires authentication
+3. **Ownership**: Users can only update or delete their own reviews
+4. **One Review Per User**: Each user can only post one review per product (enforced at application level)
+
+### Automatic Features
+
+1. **Product Rating Update**: Product's average rating is automatically recalculated when reviews are added, updated, or deleted
+2. **Sentiment Analysis**: Reviews may undergo automatic sentiment analysis to populate `sentiment` and `sentiment_score` fields
+3. **Timestamp Tracking**: Creation and update timestamps are automatically maintained
+
+### Content Guidelines
+
+- **Review Text**: Should be descriptive and provide useful information to other customers
+- **Minimum Length**: While not enforced at API level, reviews should be substantive
+- **Prohibited Content**: Reviews containing inappropriate content may be marked as inactive by administrators
+
+## Notes
+
+- Reviews are sorted by creation date (most recent first) by default
+- The `is_active` flag allows administrators to hide inappropriate reviews without deletion
+- Sentiment analysis is performed automatically but may be null for older reviews
+- Product ratings are calculated as the average of all active review ratings
+- Review images are optional and managed separately from the review text
+- Deleting a review permanently removes it from the database
+- The product's rating field is updated asynchronously after review operations

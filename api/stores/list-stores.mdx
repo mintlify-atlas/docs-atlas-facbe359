@@ -1,0 +1,137 @@
+---
+title: 'List Stores'
+api: 'GET /api/v1/stores/'
+description: 'Retrieve a list of all vendor stores registered on the platform'
+---
+
+This endpoint returns a paginated list of all stores (vendors) registered on the e-commerce platform. Stores represent multi-vendor accounts that can list and sell products.
+
+## Overview
+
+Stores are the multi-vendor component of the platform. Each store:
+- Is owned by a single customer (one-to-one relationship)
+- Can list multiple products for sale
+- Has followers who receive updates about the store
+- Tracks key metrics like products sold and follower count
+
+## Authentication
+
+This endpoint does **not** require authentication. All stores are publicly accessible.
+
+## Query Parameters
+
+<ParamField query="limit" type="integer">
+  Maximum number of stores to return per page
+</ParamField>
+
+<ParamField query="offset" type="integer">
+  Number of stores to skip for pagination
+</ParamField>
+
+## Response
+
+Returns an array of store objects with the following structure:
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the store
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Hyperlinked URL to the store detail endpoint (uses slug)
+</ResponseField>
+
+<ResponseField name="brand_name" type="string" required>
+  The store's brand name (unique across the platform)
+</ResponseField>
+
+<ResponseField name="about" type="string" required>
+  Description of the store and what it sells
+</ResponseField>
+
+<ResponseField name="products_sold" type="integer">
+  Total number of products sold by this store across all products
+</ResponseField>
+
+<ResponseField name="owner" type="integer">
+  Customer ID of the store owner
+</ResponseField>
+
+<ResponseField name="followers" type="array">
+  Array of customer IDs who follow this store
+</ResponseField>
+
+<ResponseExample>
+```json Response
+{
+  "count": 25,
+  "next": "http://api.example.com/api/v1/stores/?offset=10",
+  "previous": null,
+  "results": [
+    {
+      "id": 1,
+      "url": "http://api.example.com/api/v1/stores/awesome-electronics/",
+      "brand_name": "Awesome Electronics",
+      "about": "We specialize in consumer electronics and accessories with fast shipping and excellent customer service.",
+      "products_sold": 1247,
+      "owner": 42,
+      "followers": [15, 23, 89, 102]
+    },
+    {
+      "id": 2,
+      "url": "http://api.example.com/api/v1/stores/green-garden-supplies/",
+      "brand_name": "Green Garden Supplies",
+      "about": "Organic gardening supplies and sustainable farming equipment.",
+      "products_sold": 823,
+      "owner": 58,
+      "followers": [12, 45, 67]
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Store-Product Relationship
+
+Each store can have multiple products associated with it. The relationship is defined in the source code:
+- **Model**: `stores/models.py:8-39`
+- **Serializer**: `stores/serializers.py:8-19`
+- Products are accessed via the reverse relationship `product_set` (available in the detail endpoint)
+
+## Use Cases
+
+### Browse All Vendors
+```javascript
+const response = await fetch('https://api.example.com/api/v1/stores/');
+const data = await response.json();
+const stores = data.results;
+```
+
+### Filter by Performance
+```javascript
+// Client-side filtering by products sold
+const topStores = stores
+  .filter(store => store.products_sold > 1000)
+  .sort((a, b) => b.products_sold - a.products_sold);
+```
+
+### Display Store Metrics
+```javascript
+stores.forEach(store => {
+  console.log(`${store.brand_name}: ${store.followers.length} followers, ${store.products_sold} sales`);
+});
+```
+
+## Related Endpoints
+
+- [Get Store](/api/stores/get-store) - Retrieve detailed information about a specific store including its products
+- **POST /api/v1/stores/** - Create a new store (requires authentication)
+- **PUT /api/v1/stores/{slug}/** - Update store information (requires vendor ownership)
+- **DELETE /api/v1/stores/{slug}/** - Delete a store (requires vendor ownership)
+- **POST /api/v1/stores/{slug}/follow_store/** - Follow a store
+- **POST /api/v1/stores/{slug}/unfollow_store/** - Unfollow a store
+
+## Notes
+
+- The lookup field is `slug`, automatically generated from `brand_name`
+- Store owners are automatically granted `is_vendor` and `is_staff` status when their store is created
+- The `products_sold` field is a computed property that sums the `quantity_sold` of all products in the store

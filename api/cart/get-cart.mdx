@@ -1,0 +1,184 @@
+---
+title: "Get Cart"
+api: "GET /api/v1/cart/"
+description: "Retrieve the current shopping cart contents including items, pricing, and totals"
+---
+
+## Overview
+
+Retrieves the current user's shopping cart from their session. Returns all cart items with calculated totals including subtotal, shipping, and final total. Cart sessions automatically expire after 30 minutes of inactivity.
+
+## Session Management
+
+The shopping cart uses Django session storage to maintain cart state:
+- **Session Duration**: 30 minutes (1800 seconds) of inactivity
+- **Storage**: Session-based (no authentication required)
+- **Auto-refresh**: Cart items are automatically refreshed every 5 minutes to validate stock levels and pricing
+
+## Request
+
+```bash cURL
+curl -X GET https://api.example.com/api/v1/cart/ \
+  -H "Cookie: sessionid=your_session_id"
+```
+
+## Response
+
+<ResponseField name="items" type="object">
+  Dictionary of cart items keyed by item identifier
+  
+  <ResponseField name="[item_key]" type="object">
+    Individual cart item details
+    
+    <ResponseField name="product" type="string">
+      Product name
+    </ResponseField>
+    
+    <ResponseField name="variant_id" type="integer">
+      Product variant ID
+    </ResponseField>
+    
+    <ResponseField name="price" type="string">
+      Current price per unit (as decimal string)
+    </ResponseField>
+    
+    <ResponseField name="original_price" type="string">
+      Original price before any discounts (as decimal string)
+    </ResponseField>
+    
+    <ResponseField name="quantity" type="integer">
+      Quantity of this item in cart
+    </ResponseField>
+    
+    <ResponseField name="offer_applied" type="boolean">
+      Whether an automatic offer/discount is applied to this item
+    </ResponseField>
+    
+    <ResponseField name="shipping" type="string">
+      Shipping cost for this item (as decimal string)
+    </ResponseField>
+    
+    <ResponseField name="item_type" type="string">
+      Type of item: "standalone" or "variant"
+    </ResponseField>
+    
+    <ResponseField name="active_offer" type="object" optional>
+      Present if an offer is applied to this item
+      
+      <ResponseField name="offer_id" type="integer">
+        ID of the applied offer
+      </ResponseField>
+      
+      <ResponseField name="requires_voucher" type="boolean">
+        Whether the offer requires a voucher code
+      </ResponseField>
+      
+      <ResponseField name="is_valid" type="boolean">
+        Whether the offer is currently active and not expired
+      </ResponseField>
+    </ResponseField>
+    
+    <ResponseField name="voucher_discount" type="object" optional>
+      Present if a voucher discount is applied to this item
+      
+      <ResponseField name="voucher_id" type="integer">
+        ID of the applied voucher
+      </ResponseField>
+      
+      <ResponseField name="discount_type" type="string">
+        Type of discount: "percentage" or "fixed"
+      </ResponseField>
+      
+      <ResponseField name="discount_amount" type="number">
+        Calculated discount amount
+      </ResponseField>
+    </ResponseField>
+  </ResponseField>
+</ResponseField>
+
+<ResponseField name="count" type="integer">
+  Total number of items in cart (sum of all quantities)
+</ResponseField>
+
+<ResponseField name="subtotal" type="number">
+  Subtotal of all items before shipping and discounts
+</ResponseField>
+
+<ResponseField name="shipping" type="number">
+  Total shipping cost
+</ResponseField>
+
+<ResponseField name="total" type="number">
+  Final total including shipping and after discounts
+</ResponseField>
+
+### Success Response
+
+```json 200 OK
+{
+  "items": {
+    "prod123_SKU789_dflt": {
+      "product": "Wireless Headphones",
+      "variant_id": 456,
+      "price": "89.99",
+      "original_price": "99.99",
+      "quantity": 2,
+      "offer_applied": true,
+      "shipping": "0",
+      "item_type": "variant",
+      "active_offer": {
+        "offer_id": 12,
+        "requires_voucher": false,
+        "is_valid": true
+      }
+    },
+    "prod234_SKU890_dflt": {
+      "product": "USB-C Cable",
+      "variant_id": 457,
+      "price": "12.99",
+      "original_price": "12.99",
+      "quantity": 1,
+      "offer_applied": false,
+      "shipping": "0",
+      "item_type": "standalone"
+    }
+  },
+  "count": 3,
+  "subtotal": 192.97,
+  "shipping": 0,
+  "total": 192.97
+}
+```
+
+### Empty Cart Response
+
+```json 200 OK
+{
+  "info": "Your cart is empty"
+}
+```
+
+## Cart Item Keys
+
+Cart items are identified by a unique key in the format:
+```
+prod{product_id}_{variant_sku}_dflt
+```
+
+For example: `prod123_2f23232242f2f3f_dflt`
+
+This key is required when updating or removing specific items from the cart.
+
+## Automatic Cart Refresh
+
+The cart automatically refreshes to:
+- Validate product availability and stock levels
+- Update prices based on current offers
+- Remove unavailable items
+- Adjust quantities if stock is insufficient
+- Revalidate applied vouchers
+
+Refresh occurs:
+- Every 5 minutes automatically
+- Before adding new items
+- When updating item quantities

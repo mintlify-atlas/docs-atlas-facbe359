@@ -1,0 +1,226 @@
+---
+title: 'Get Store'
+api: 'GET /api/v1/stores/{id}/'
+description: 'Retrieve detailed information about a specific store including all its products'
+---
+
+This endpoint returns detailed information about a single store, including the complete list of products the store sells. Use the store's slug identifier to retrieve the data.
+
+## Overview
+
+The store detail endpoint provides comprehensive information about a vendor store, including:
+- Store metadata (brand name, description, owner)
+- Performance metrics (products sold, follower count)
+- **Complete product catalog** - All products listed by this store
+- Follower information
+
+## Authentication
+
+This endpoint does **not** require authentication. All store details are publicly accessible.
+
+## Path Parameters
+
+<ParamField path="id" type="string" required>
+  The store's slug identifier (auto-generated from brand name). Note: Despite the parameter name "id", this endpoint uses the slug field for lookup.
+  
+  Example: `awesome-electronics` for a store named "Awesome Electronics"
+</ParamField>
+
+## Response
+
+Returns a detailed store object with the following structure:
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the store
+</ResponseField>
+
+<ResponseField name="url" type="string">
+  Hyperlinked URL to this store detail endpoint
+</ResponseField>
+
+<ResponseField name="brand_name" type="string" required>
+  The store's brand name (unique across the platform)
+</ResponseField>
+
+<ResponseField name="about" type="string" required>
+  Description of the store and what it sells
+</ResponseField>
+
+<ResponseField name="products_sold" type="integer">
+  Total number of products sold by this store across all products (computed property)
+</ResponseField>
+
+<ResponseField name="owner" type="integer">
+  Customer ID of the store owner (one-to-one relationship)
+</ResponseField>
+
+<ResponseField name="followers" type="array">
+  Array of customer IDs who follow this store (many-to-many relationship)
+</ResponseField>
+
+<ResponseField name="product_set" type="array" required>
+  Array of product objects sold by this store. Each product includes:
+  - Product details (name, description, price)
+  - Inventory information
+  - Category and tags
+  - Images and ratings
+  
+  This field uses the `ProductListSerializer` from `catalogue/serializers.py`
+</ResponseField>
+
+<ResponseExample>
+```json Response
+{
+  "id": 1,
+  "url": "http://api.example.com/api/v1/stores/awesome-electronics/",
+  "brand_name": "Awesome Electronics",
+  "about": "We specialize in consumer electronics and accessories with fast shipping and excellent customer service. Founded in 2020, we've served over 10,000 customers with quality products.",
+  "products_sold": 1247,
+  "owner": 42,
+  "followers": [15, 23, 89, 102, 156, 203],
+  "product_set": [
+    {
+      "id": 101,
+      "name": "Wireless Bluetooth Headphones",
+      "slug": "wireless-bluetooth-headphones",
+      "description": "Premium sound quality with active noise cancellation",
+      "price": "79.99",
+      "stock_quantity": 45,
+      "quantity_sold": 234,
+      "category": "Electronics",
+      "is_available": true,
+      "created_at": "2025-01-15T10:30:00Z"
+    },
+    {
+      "id": 102,
+      "name": "USB-C Fast Charging Cable",
+      "slug": "usb-c-fast-charging-cable",
+      "description": "Durable braided cable with fast charging support",
+      "price": "12.99",
+      "stock_quantity": 200,
+      "quantity_sold": 567,
+      "category": "Accessories",
+      "is_available": true,
+      "created_at": "2025-02-01T14:20:00Z"
+    },
+    {
+      "id": 103,
+      "name": "Portable Power Bank 20000mAh",
+      "slug": "portable-power-bank-20000mah",
+      "description": "High-capacity power bank for on-the-go charging",
+      "price": "34.99",
+      "stock_quantity": 78,
+      "quantity_sold": 446,
+      "category": "Electronics",
+      "is_available": true,
+      "created_at": "2025-01-20T09:15:00Z"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Store-Product Relationship
+
+The store-product relationship is the core of the multi-vendor functionality:
+
+### Database Structure
+- **One-to-Many**: One store can have many products
+- **Foreign Key**: Products have a foreign key reference to their store
+- **Reverse Relation**: Accessed via `product_set` on the Store model
+
+### Code References
+- **Store Model**: `stores/models.py:8-39`
+- **Product Count Property**: `stores/models.py:32-34` - Computed from `product_set.count()`
+- **Products Sold Property**: `stores/models.py:36-38` - Sum of all product `quantity_sold` values
+- **Serializer**: `stores/serializers.py:22-28` - Uses `ProductListSerializer` for nested products
+
+### Querying Products
+```python
+# In Django ORM (backend implementation)
+store = Store.objects.get(slug='awesome-electronics')
+products = store.product_set.all()  # All products for this store
+total_sold = store.products_sold    # Computed property
+```
+
+## Use Cases
+
+### Display Store Profile
+```javascript
+const storeSlug = 'awesome-electronics';
+const response = await fetch(`https://api.example.com/api/v1/stores/${storeSlug}/`);
+const store = await response.json();
+
+console.log(`${store.brand_name} - ${store.followers.length} followers`);
+console.log(`Products: ${store.product_set.length}`);
+console.log(`Total Sales: ${store.products_sold}`);
+```
+
+### Browse Store Catalog
+```javascript
+// Get all products from a specific store
+const products = store.product_set;
+products.forEach(product => {
+  console.log(`${product.name} - $${product.price} (${product.stock_quantity} in stock)`);
+});
+```
+
+### Check Store Performance
+```javascript
+// Calculate store metrics
+const totalRevenue = store.product_set.reduce((sum, product) => {
+  return sum + (parseFloat(product.price) * product.quantity_sold);
+}, 0);
+
+const averageProductPrice = store.product_set.reduce((sum, p) => 
+  sum + parseFloat(p.price), 0) / store.product_set.length;
+
+console.log(`Total Revenue: $${totalRevenue.toFixed(2)}`);
+console.log(`Average Price: $${averageProductPrice.toFixed(2)}`);
+```
+
+### Filter Store Products
+```javascript
+// Find available products in a price range
+const affordableProducts = store.product_set.filter(product => 
+  product.is_available && parseFloat(product.price) < 50
+);
+```
+
+## Error Responses
+
+<ResponseField name="404 Not Found" type="object">
+  Returned when a store with the specified slug does not exist
+</ResponseField>
+
+```json 404 Response
+{
+  "detail": "Not found."
+}
+```
+
+## Related Endpoints
+
+- [List Stores](/api/stores/list-stores) - Browse all stores on the platform
+- **POST /api/v1/stores/** - Create a new store (requires authentication)
+- **PUT /api/v1/stores/{slug}/** - Update store information (requires vendor ownership)
+- **DELETE /api/v1/stores/{slug}/** - Delete a store (requires vendor ownership)
+- **POST /api/v1/stores/{slug}/follow_store/** - Follow this store to receive updates
+- **POST /api/v1/stores/{slug}/unfollow_store/** - Unfollow this store
+
+## Permissions
+
+- **List/Retrieve**: Public access (no authentication required)
+- **Create**: Requires authentication (`IsAuthenticated`)
+- **Update**: Requires vendor ownership (`VendorOnly` permission)
+- **Delete**: Requires vendor ownership (`VendorOnly` permission)
+
+Permission logic is defined in `stores/views.py:27-35`
+
+## Notes
+
+- The endpoint uses `slug` as the lookup field, not the numeric ID
+- The `StoreInstanceSerializer` includes the full `product_set` for detailed views
+- The `products_sold` value is computed in real-time from all products
+- Store owners automatically receive `is_vendor=True` and `is_staff=True` flags
+- When a store is deleted, the owner's vendor and staff status are revoked

@@ -1,0 +1,261 @@
+---
+title: "Vouchers"
+description: "Apply and manage voucher codes for cart discounts"
+---
+
+## Overview
+
+Vouchers are discount codes that customers can apply during checkout to redeem associated offers. Each voucher is linked to a specific offer and controls how many times it can be used through various usage patterns.
+
+## Voucher Usage Types
+
+Vouchers support three different usage patterns:
+
+### Single Use
+The voucher can only be used once total, across all customers. Once redeemed, it becomes invalid for everyone.
+
+### Multiple Use
+The voucher can be used multiple times by any customer until it reaches its `max_usage_limit`.
+
+### Once Per Customer
+Each customer can use the voucher once. The voucher remains valid for other customers until it reaches its `max_usage_limit`.
+
+## Voucher Validation
+
+When a voucher is applied, the system validates:
+
+1. **Usage Limits**:
+   - For `single` use: Voucher must not have been used before (`num_of_usage` must be 0)
+   - For `multiple` use: `num_of_usage` must be less than `max_usage_limit`
+   - For `once_per_customer` use: Customer must not have redeemed this voucher before
+
+2. **Validity Period**: Current time must be between `valid_from` and `valid_to`
+
+3. **Associated Offer**: The linked offer must be active and not expired
+
+4. **Order Value**: If the offer has a minimum order value condition, the cart subtotal must meet it
+
+5. **Offer Conditions**: All conditions of the associated offer must be satisfied
+
+## Apply Voucher to Cart
+
+<api-endpoint verb="post" path="/api/v1/cart/apply/vouchers/" />
+
+Applies a voucher code to the customer's shopping cart. The voucher discount will be calculated based on the associated offer's discount type and value.
+
+### Request Body
+
+<ParamField body="voucher_code" type="string" required>
+  The voucher code to apply (case-insensitive, will be converted to uppercase)
+</ParamField>
+
+### Request Example
+
+```json
+{
+  "voucher_code": "WELCOME10"
+}
+```
+
+### Response
+
+<ResponseField name="success" type="string">
+  Success message confirming the voucher was applied
+</ResponseField>
+
+### Success Response Example
+
+```json
+{
+  "success": "Voucher WELCOME10 has been successfully applied to your cart"
+}
+```
+
+### Error Responses
+
+<ResponseField name="error" type="string">
+  Error message explaining why the voucher could not be applied
+</ResponseField>
+
+<ResponseField name="voucher_code" type="string">
+  Validation error for missing voucher code
+</ResponseField>
+
+#### Missing Voucher Code (400)
+
+```json
+{
+  "voucher_code": "Voucher code is required"
+}
+```
+
+#### Invalid Voucher (400)
+
+```json
+{
+  "error": "Voucher code does not exist"
+}
+```
+
+#### Usage Limit Reached (400)
+
+```json
+{
+  "error": "Voucher has reached its usage limit"
+}
+```
+
+#### Expired Voucher (400)
+
+```json
+{
+  "error": "Voucher offer has expired"
+}
+```
+
+#### Minimum Order Value Not Met (400)
+
+```json
+{
+  "error": "Your order is below the required minimum purchase"
+}
+```
+
+#### Customer Already Used Voucher (400)
+
+For `once_per_customer` vouchers:
+
+```json
+{
+  "error": "You have already used this voucher"
+}
+```
+
+#### Offer Conditions Not Met (400)
+
+```json
+{
+  "error": "Offer is only valid for first-time buyers"
+}
+```
+
+```json
+{
+  "error": "Order value must be more than minimum spend: 50.00"
+}
+```
+
+## Remove Voucher from Cart
+
+<api-endpoint verb="delete" path="/api/v1/cart/apply/vouchers/" />
+
+Removes the currently applied voucher from the customer's shopping cart.
+
+### Response
+
+<ResponseField name="success" type="string">
+  Success message confirming the voucher was removed
+</ResponseField>
+
+<ResponseField name="error" type="string">
+  Error message if no voucher is currently applied
+</ResponseField>
+
+### Success Response Example
+
+```json
+{
+  "success": "Applied voucher has been successfully removed"
+}
+```
+
+### Error Response Example (400)
+
+```json
+{
+  "error": "No applied voucher to remove"
+}
+```
+
+## Voucher Model Structure
+
+Vouchers are returned as part of the [Offers](/api/discounts/offers) endpoint response in the `voucher_set` array.
+
+<ResponseField name="id" type="integer">
+  Unique identifier for the voucher
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Display name of the voucher
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Detailed description of what the voucher offers
+</ResponseField>
+
+<ResponseField name="code" type="string">
+  Unique voucher code that customers use to redeem the offer (always uppercase)
+</ResponseField>
+
+<ResponseField name="usage_type" type="string">
+  Usage pattern: `single`, `multiple`, or `once_per_customer`
+</ResponseField>
+
+<ResponseField name="max_usage_limit" type="integer">
+  Maximum number of times this voucher can be used in total
+</ResponseField>
+
+<ResponseField name="num_of_usage" type="integer">
+  Current number of times this voucher has been used
+</ResponseField>
+
+<ResponseField name="valid_from" type="datetime">
+  Start date and time when the voucher becomes valid
+</ResponseField>
+
+<ResponseField name="valid_to" type="datetime">
+  End date and time when the voucher expires
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether the voucher is currently active
+</ResponseField>
+
+## Redemption Flow
+
+1. **Customer enters voucher code** at checkout
+2. **System validates voucher**:
+   - Checks if voucher exists and is active
+   - Verifies usage limits based on `usage_type`
+   - Confirms voucher is within validity period
+   - Validates associated offer conditions
+3. **Discount is applied** to cart if all validations pass
+4. **Usage count is updated** when order is completed:
+   - `num_of_usage` is incremented
+   - Redemption is recorded in `RedeemedVoucher` table with customer and timestamp
+5. **Offer discount tracking** is updated:
+   - `total_discount_offered` on the offer is increased by the discount amount
+   - Customer is added to `claimed_by` list on the offer
+
+## Best Practices
+
+### For Single-Use Vouchers
+- Set `usage_type` to `single`
+- Set `max_usage_limit` to `1`
+- Use for exclusive or high-value promotions
+
+### For Multi-Use Vouchers
+- Set `usage_type` to `multiple`
+- Set appropriate `max_usage_limit` based on campaign budget
+- Monitor `num_of_usage` to track campaign performance
+
+### For Once-Per-Customer Vouchers
+- Set `usage_type` to `once_per_customer`
+- Set `max_usage_limit` based on expected customer reach
+- Ideal for welcome offers and customer acquisition campaigns
+- Requires customer authentication to track usage
+
+## Related Endpoints
+
+- [Offers](/api/discounts/offers) - View available offers and their associated vouchers
+- [Cart](/api/cart/get-cart) - View cart with applied discounts

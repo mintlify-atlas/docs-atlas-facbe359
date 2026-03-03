@@ -1,0 +1,261 @@
+---
+title: "List Orders"
+api: "GET /api/v1/i/orders/"
+description: "Retrieve a paginated list of all orders for the authenticated customer"
+---
+
+## Description
+
+Returns a list of orders belonging to the authenticated customer. The results are paginated and can be filtered by order status. Orders are returned in reverse chronological order (newest first).
+
+## Authentication
+
+Requires authentication. Include a valid authentication token in the request headers.
+
+## Query Parameters
+
+<ParamField query="status" type="string">
+  Filter orders by status. Valid values:
+  - `paid` - Order has been paid for
+  - `awaiting_payment` - Order is pending payment
+  - `delivered` - Order has been delivered
+  - `cancelled` - Order has been cancelled
+</ParamField>
+
+<ParamField query="limit" type="integer" default="20">
+  Maximum number of results to return per page
+</ParamField>
+
+<ParamField query="offset" type="integer" default="0">
+  Number of results to skip before returning results
+</ParamField>
+
+## Response
+
+<ResponseField name="count" type="integer">
+  Total number of orders matching the query
+</ResponseField>
+
+<ResponseField name="next" type="string">
+  URL to the next page of results (null if no more pages)
+</ResponseField>
+
+<ResponseField name="previous" type="string">
+  URL to the previous page of results (null if first page)
+</ResponseField>
+
+<ResponseField name="results" type="array">
+  Array of order objects
+  
+  <Expandable title="Order Object">
+    <ResponseField name="id" type="uuid">
+      Unique identifier for the order
+    </ResponseField>
+    
+    <ResponseField name="url" type="string">
+      API endpoint URL for this specific order
+    </ResponseField>
+    
+    <ResponseField name="customer" type="object">
+      Customer information
+      <Expandable title="Customer Details">
+        <ResponseField name="email" type="string">
+          Customer email address
+        </ResponseField>
+        <ResponseField name="first_name" type="string">
+          Customer first name
+        </ResponseField>
+        <ResponseField name="last_name" type="string">
+          Customer last name
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="created" type="datetime">
+      Timestamp when the order was created
+    </ResponseField>
+    
+    <ResponseField name="updated" type="datetime">
+      Timestamp when the order was last updated
+    </ResponseField>
+    
+    <ResponseField name="billing_address" type="object">
+      Billing address for the order
+      <Expandable title="Address Details">
+        <ResponseField name="street_address" type="string">
+          Street address
+        </ResponseField>
+        <ResponseField name="postal_code" type="integer">
+          Postal/ZIP code
+        </ResponseField>
+        <ResponseField name="city" type="string">
+          City name
+        </ResponseField>
+        <ResponseField name="state" type="string">
+          State/Province name
+        </ResponseField>
+        <ResponseField name="country" type="string">
+          Country name (must be full name, not code)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="items" type="array">
+      Array of order items
+      <Expandable title="Order Item">
+        <ResponseField name="id" type="integer">
+          Order item ID
+        </ResponseField>
+        <ResponseField name="product" type="object">
+          Product information (simplified)
+        </ResponseField>
+        <ResponseField name="variant" type="integer">
+          Product variant ID
+        </ResponseField>
+        <ResponseField name="unit_price" type="decimal">
+          Price per unit (after any item-level discounts)
+        </ResponseField>
+        <ResponseField name="quantity" type="integer">
+          Quantity ordered
+        </ResponseField>
+        <ResponseField name="shipping" type="decimal">
+          Shipping cost for this item
+        </ResponseField>
+        <ResponseField name="discount_amount" type="decimal">
+          Total discount amount applied to this item
+        </ResponseField>
+        <ResponseField name="total_price" type="decimal">
+          Total price for this item (unit_price × quantity)
+        </ResponseField>
+        <ResponseField name="offer" type="integer">
+          Offer ID if a promotional offer was applied (nullable)
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+    
+    <ResponseField name="items_count" type="integer">
+      Total number of items in the order (sum of quantities)
+    </ResponseField>
+    
+    <ResponseField name="savings_on_items" type="decimal">
+      Total savings from offers applied to items
+    </ResponseField>
+    
+    <ResponseField name="status" type="string">
+      Current order status: `paid`, `awaiting_payment`, `delivered`, or `cancelled`
+    </ResponseField>
+    
+    <ResponseField name="subtotal" type="decimal">
+      Sum of all item prices (before shipping and voucher discounts)
+    </ResponseField>
+    
+    <ResponseField name="amount_saved" type="decimal">
+      Total discount amount from vouchers and item-level offers
+    </ResponseField>
+    
+    <ResponseField name="shipping" type="decimal">
+      Total shipping cost for the order
+    </ResponseField>
+    
+    <ResponseField name="total_amount" type="decimal">
+      Final order total: subtotal + shipping - amount_saved
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<RequestExample>
+```bash cURL
+curl -X GET "https://api.example.com/api/v1/i/orders/" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```bash Filter by Status
+curl -X GET "https://api.example.com/api/v1/i/orders/?status=paid" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+
+```bash With Pagination
+curl -X GET "https://api.example.com/api/v1/i/orders/?limit=10&offset=20" \
+  -H "Authorization: Bearer YOUR_TOKEN"
+```
+</RequestExample>
+
+<ResponseExample>
+```json 200 OK
+{
+  "count": 45,
+  "next": "https://api.example.com/api/v1/i/orders/?limit=20&offset=20",
+  "previous": null,
+  "results": [
+    {
+      "id": "a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d",
+      "url": "https://api.example.com/api/v1/i/orders/a3d5c8e7-9b4f-4a2e-8c7d-1f3e5a6b9c0d/",
+      "customer": {
+        "email": "customer@example.com",
+        "first_name": "John",
+        "last_name": "Doe"
+      },
+      "created": "2026-03-01T10:30:00Z",
+      "updated": "2026-03-01T10:35:00Z",
+      "billing_address": {
+        "street_address": "123 Main St",
+        "postal_code": 12345,
+        "city": "Anytown",
+        "state": "CA",
+        "country": "Canada"
+      },
+      "items": [
+        {
+          "id": 1,
+          "product": {
+            "id": 42,
+            "name": "Wireless Headphones",
+            "slug": "wireless-headphones"
+          },
+          "variant": 101,
+          "unit_price": "79.99",
+          "quantity": 2,
+          "shipping": "5.00",
+          "discount_amount": "10.00",
+          "total_price": "159.98",
+          "offer": 5
+        }
+      ],
+      "items_count": 2,
+      "savings_on_items": "10.00",
+      "status": "awaiting_payment",
+      "subtotal": "159.98",
+      "amount_saved": "10.00",
+      "shipping": "5.00",
+      "total_amount": "154.98"
+    }
+  ]
+}
+```
+</ResponseExample>
+
+## Order Status Workflow
+
+Orders progress through the following statuses:
+
+1. **awaiting_payment** - Initial state when order is created from cart
+2. **paid** - Order has been successfully paid
+3. **delivered** - Order has been shipped and delivered
+4. **cancelled** - Order was cancelled (can be deleted instead)
+
+## Pricing Calculations
+
+The order pricing follows this calculation:
+
+- **subtotal** = Sum of (unit_price × quantity) for all items
+- **amount_saved** = Sum of discount_amount from items + voucher discount_amount
+- **shipping** = Sum of shipping costs for all items
+- **total_amount** = subtotal + shipping - amount_saved
+
+## Notes
+
+- Only orders belonging to the authenticated customer are returned
+- Results are ordered by creation date (newest first)
+- The `items_count` represents total quantity of all items, not unique items
+- Item-level discounts from active offers are preserved in `discount_amount`
+- Applied vouchers (if any) are included in the order's `amount_saved`

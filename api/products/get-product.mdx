@@ -1,0 +1,379 @@
+---
+title: "Get Product Details"
+description: "Retrieve detailed information about a specific product including variants and reviews"
+---
+
+## Endpoint
+
+<CodeGroup>
+```bash GET
+GET /api/v1/products/{id}/
+```
+</CodeGroup>
+
+## Authentication
+
+This endpoint does not require authentication. It is publicly accessible.
+
+## Path Parameters
+
+<ParamField path="id" type="integer" required>
+  The unique identifier of the product
+</ParamField>
+
+## Response
+
+<ResponseField name="id" type="integer">
+  Unique product identifier
+</ResponseField>
+
+<ResponseField name="name" type="string">
+  Product name
+</ResponseField>
+
+<ResponseField name="category" type="string">
+  Category name the product belongs to
+</ResponseField>
+
+<ResponseField name="description" type="string">
+  Detailed product description
+</ResponseField>
+
+<ResponseField name="store" type="string">
+  Hyperlink to the store details
+</ResponseField>
+
+<ResponseField name="base_price" type="string">
+  Base price of the product (decimal format)
+</ResponseField>
+
+<ResponseField name="shipping_fee" type="string">
+  Shipping fee for the product (can be null)
+</ResponseField>
+
+<ResponseField name="rating" type="float">
+  Average customer rating calculated from all reviews (null if no reviews)
+</ResponseField>
+
+<ResponseField name="is_standalone" type="boolean">
+  Whether the product has variants or is a standalone item
+</ResponseField>
+
+<ResponseField name="total_stock_level" type="integer">
+  Total available stock quantity across all variants
+</ResponseField>
+
+<ResponseField name="total_sold" type="integer">
+  Total number of units sold across all variants
+</ResponseField>
+
+<ResponseField name="is_available" type="boolean">
+  Current availability status (true if stock_level > 0)
+</ResponseField>
+
+<ResponseField name="is_active" type="boolean">
+  Whether the product is active in the system
+</ResponseField>
+
+<ResponseField name="created" type="string">
+  ISO 8601 timestamp of product creation
+</ResponseField>
+
+<ResponseField name="updated" type="string">
+  ISO 8601 timestamp of last update
+</ResponseField>
+
+<ResponseField name="media" type="array">
+  Array of product media objects (images/videos)
+  
+  <Expandable title="Media Object">
+    <ResponseField name="id" type="integer">
+      Media ID
+    </ResponseField>
+    
+    <ResponseField name="file" type="string">
+      URL to the media file
+    </ResponseField>
+    
+    <ResponseField name="is_primary" type="boolean">
+      Whether this is the primary product image
+    </ResponseField>
+    
+    <ResponseField name="file_size" type="float">
+      File size in megabytes
+    </ResponseField>
+    
+    <ResponseField name="file_type" type="string">
+      Type of media: `image`, `video`, or `unknown`
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="product_offers" type="array">
+  Array of active offers applicable to this product
+</ResponseField>
+
+<ResponseField name="variants" type="array">
+  Array of product variants with different attributes and pricing
+  
+  <Expandable title="Variant Object">
+    <ResponseField name="id" type="integer">
+      Variant ID
+    </ResponseField>
+    
+    <ResponseField name="sku" type="string">
+      Stock Keeping Unit - unique identifier for this variant
+    </ResponseField>
+    
+    <ResponseField name="is_default" type="boolean">
+      Whether this is the default variant for the product
+    </ResponseField>
+    
+    <ResponseField name="price_adjustment" type="string">
+      Amount to add to the product's base price (can be negative)
+    </ResponseField>
+    
+    <ResponseField name="stock_level" type="integer">
+      Available stock quantity for this variant
+    </ResponseField>
+    
+    <ResponseField name="quantity_sold" type="integer">
+      Number of units sold for this variant
+    </ResponseField>
+    
+    <ResponseField name="is_active" type="boolean">
+      Whether this variant is active
+    </ResponseField>
+    
+    <ResponseField name="created" type="string">
+      ISO 8601 timestamp of variant creation
+    </ResponseField>
+    
+    <ResponseField name="updated" type="string">
+      ISO 8601 timestamp of last update
+    </ResponseField>
+    
+    <ResponseField name="attributes" type="array">
+      Array of variant attributes (e.g., color, size)
+      
+      <Expandable title="Attribute Object">
+        <ResponseField name="attribute" type="string">
+          Attribute name (e.g., "Color", "Size")
+        </ResponseField>
+        
+        <ResponseField name="value" type="string">
+          Attribute value (e.g., "Red", "Large")
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+<ResponseField name="reviews" type="array">
+  Array of customer reviews for this product
+  
+  <Expandable title="Review Object">
+    <ResponseField name="id" type="integer">
+      Review ID
+    </ResponseField>
+    
+    <ResponseField name="user" type="string">
+      Username of the reviewer
+    </ResponseField>
+    
+    <ResponseField name="review_text" type="string">
+      Review content/comments
+    </ResponseField>
+    
+    <ResponseField name="rating" type="integer">
+      Rating value (1-5):
+      - 1: Very Bad
+      - 2: Unsatisfied
+      - 3: Just There
+      - 4: Satisfied
+      - 5: Very Satisfied
+    </ResponseField>
+    
+    <ResponseField name="sentiment" type="string">
+      Analyzed sentiment: `POSITIVE`, `Neutral`, or `Negative`
+    </ResponseField>
+    
+    <ResponseField name="sentiment_score" type="float">
+      Numerical sentiment score (can be null)
+    </ResponseField>
+    
+    <ResponseField name="is_active" type="boolean">
+      Whether the review is active/visible
+    </ResponseField>
+    
+    <ResponseField name="created" type="string">
+      ISO 8601 timestamp of review creation
+    </ResponseField>
+    
+    <ResponseField name="updated" type="string">
+      ISO 8601 timestamp of last update
+    </ResponseField>
+    
+    <ResponseField name="reviewimage_set" type="array">
+      Array of images attached to the review
+      
+      <Expandable title="Review Image Object">
+        <ResponseField name="id" type="integer">
+          Image ID
+        </ResponseField>
+        
+        <ResponseField name="image" type="string">
+          URL to the review image
+        </ResponseField>
+        
+        <ResponseField name="is_primary" type="boolean">
+          Whether this is the primary review image
+        </ResponseField>
+      </Expandable>
+    </ResponseField>
+  </Expandable>
+</ResponseField>
+
+## Request Example
+
+<CodeGroup>
+```bash cURL
+curl -X GET "https://api.example.com/api/v1/products/1/" \
+  -H "Accept: application/json"
+```
+
+```python Python
+import requests
+
+url = "https://api.example.com/api/v1/products/1/"
+response = requests.get(url)
+product = response.json()
+print(f"Product: {product['name']}")
+print(f"Price: ${product['base_price']}")
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/v1/products/1/')
+  .then(response => response.json())
+  .then(product => {
+    console.log(`Product: ${product.name}`);
+    console.log(`Price: $${product.base_price}`);
+  });
+```
+</CodeGroup>
+
+## Response Example
+
+```json 200 OK
+{
+  "id": 1,
+  "name": "Premium Wireless Headphones",
+  "category": "Electronics",
+  "description": "High-quality wireless headphones with active noise cancellation, 30-hour battery life, and premium sound quality. Perfect for music lovers and professionals.",
+  "store": "https://api.example.com/api/v1/stores/tech-store/",
+  "base_price": "149.99",
+  "shipping_fee": "5.99",
+  "rating": 4.5,
+  "is_standalone": false,
+  "total_stock_level": 250,
+  "total_sold": 1050,
+  "is_available": true,
+  "is_active": true,
+  "created": "2024-01-15T10:30:00Z",
+  "updated": "2024-03-01T14:22:00Z",
+  "media": [
+    {
+      "id": 1,
+      "file": "https://cdn.example.com/products/2024/01/headphones-main.jpg",
+      "is_primary": true,
+      "file_size": 2.45,
+      "file_type": "image"
+    }
+  ],
+  "product_offers": [
+    {
+      "id": 10,
+      "name": "Spring Sale - 15% Off Electronics",
+      "discount_type": "percentage",
+      "discount_value": "15.00"
+    }
+  ],
+  "variants": [
+    {
+      "id": 1,
+      "sku": "WH-1000-BLK",
+      "is_default": true,
+      "price_adjustment": "0.00",
+      "stock_level": 100,
+      "quantity_sold": 450,
+      "is_active": true,
+      "created": "2024-01-15T10:30:00Z",
+      "updated": "2024-03-01T14:22:00Z",
+      "attributes": [
+        {
+          "attribute": "Color",
+          "value": "Black"
+        }
+      ]
+    },
+    {
+      "id": 2,
+      "sku": "WH-1000-WHT",
+      "is_default": false,
+      "price_adjustment": "10.00",
+      "stock_level": 75,
+      "quantity_sold": 320,
+      "is_active": true,
+      "created": "2024-01-15T10:30:00Z",
+      "updated": "2024-03-01T14:22:00Z",
+      "attributes": [
+        {
+          "attribute": "Color",
+          "value": "White"
+        }
+      ]
+    }
+  ],
+  "reviews": [
+    {
+      "id": 15,
+      "user": "john_doe",
+      "review_text": "Excellent sound quality and comfortable for long listening sessions. The noise cancellation is impressive!",
+      "rating": 5,
+      "sentiment": "POSITIVE",
+      "sentiment_score": 0.92,
+      "is_active": true,
+      "created": "2024-02-20T15:45:00Z",
+      "updated": "2024-02-20T15:45:00Z",
+      "reviewimage_set": [
+        {
+          "id": 1,
+          "image": "https://cdn.example.com/reviews/headphones-review-1.jpg",
+          "is_primary": true
+        }
+      ]
+    }
+  ]
+}
+```
+
+## Error Responses
+
+<ResponseField name="404" type="Not Found">
+  Product with the specified ID does not exist
+  
+  ```json
+  {
+    "detail": "Not found."
+  }
+  ```
+</ResponseField>
+
+## Notes
+
+- Only active products are returned (products where `is_active=True`)
+- The rating is automatically calculated from all product reviews
+- Stock levels and availability are automatically updated when variants change
+- The `price_adjustment` on variants is added to the `base_price` to get the actual variant price
+- Standalone products (is_standalone=True) can only have one default variant
+- Review sentiment analysis may be automatically performed on review submission

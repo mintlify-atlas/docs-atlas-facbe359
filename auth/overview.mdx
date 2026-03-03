@@ -1,0 +1,118 @@
+---
+title: Authentication Overview
+description: Learn how JWT authentication works in the E-commerce API
+---
+
+The E-commerce API uses JWT (JSON Web Token) authentication to secure endpoints and manage user sessions. This authentication system is built on Django REST Framework with SimpleJWT.
+
+## Authentication Flow
+
+The API implements a token-based authentication system where:
+
+1. Users register and create an account
+2. Users obtain access and refresh tokens by providing credentials
+3. Access tokens are used to authenticate API requests
+4. Refresh tokens are used to obtain new access tokens when they expire
+
+<Note>
+  All authenticated endpoints require the `Authorization` header with a Bearer token.
+</Note>
+
+## Token Lifecycle
+
+Tokens have the following configuration:
+
+| Token Type | Lifetime | Purpose |
+|------------|----------|----------|
+| Access Token | 1 hour | Authenticate API requests |
+| Refresh Token | 3 days | Obtain new access tokens |
+
+<Info>
+  These settings are configured in `config/settings.py:208-214` using the `SIMPLE_JWT` configuration.
+</Info>
+
+## Authentication Header Format
+
+All authenticated requests must include the Authorization header:
+
+```bash
+Authorization: Bearer <access_token>
+```
+
+<CodeGroup>
+```bash curl
+curl https://api.example.com/api/v1/customers/1/ \
+  -H "Authorization: Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+```
+
+```python Python
+import requests
+
+headers = {
+    "Authorization": "Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9..."
+}
+
+response = requests.get(
+    "https://api.example.com/api/v1/customers/1/",
+    headers=headers
+)
+```
+
+```javascript JavaScript
+fetch('https://api.example.com/api/v1/customers/1/', {
+  headers: {
+    'Authorization': 'Bearer eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9...'
+  }
+})
+```
+</CodeGroup>
+
+## Default Permission Policy
+
+The API uses `IsAuthenticated` as the default permission class for all endpoints:
+
+```python
+REST_FRAMEWORK = {
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated'
+    ],
+}
+```
+
+This means most endpoints require authentication by default, unless explicitly configured with `AllowAny` permission.
+
+## Public Endpoints
+
+The following endpoints are publicly accessible without authentication:
+
+- `POST /api/v1/customers/` - Customer registration
+- `POST /auth/token/` - Obtain JWT tokens
+- `POST /auth/token/refresh/` - Refresh access token
+- Catalogue/product browsing endpoints
+
+## Custom User Model
+
+The API uses a custom user model (`Customer`) that extends Django's `AbstractUser`:
+
+```python
+AUTH_USER_MODEL = 'customers.Customer'
+```
+
+**Key characteristics:**
+- Email is used as the primary identifier (not username)
+- Required fields: `email`, `first_name`, `last_name`
+- Additional customer-specific fields like purchase history and addresses
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Registration" icon="user-plus" href="/auth/registration">
+    Learn how to create customer accounts
+  </Card>
+  <Card title="Token Management" icon="key" href="/auth/tokens">
+    Obtain, refresh, and manage JWT tokens
+  </Card>
+  <Card title="Permissions" icon="shield" href="/auth/permissions">
+    Understand permission classes and access control
+  </Card>
+</CardGroup>

@@ -1,0 +1,230 @@
+---
+title: "Apply Voucher"
+api: "POST /api/v1/cart/apply/vouchers/"
+description: "Apply or remove voucher codes for cart discounts"
+---
+
+## Overview
+
+Apply promotional voucher codes to the shopping cart to receive discounts. Vouchers can offer product-specific discounts or order-level discounts based on configured rules.
+
+## Apply Voucher Code
+
+<api method="POST" endpoint="/api/v1/cart/apply/vouchers/" />
+
+Validate and apply a voucher code to the current cart session.
+
+### Request
+
+<ParamField path="voucher_code" type="string" required>
+  The voucher code to apply. Will be normalized to uppercase and trimmed of whitespace.
+</ParamField>
+
+```bash cURL
+curl -X POST https://api.example.com/api/v1/cart/apply/vouchers/ \
+  -H "Content-Type: application/json" \
+  -H "Cookie: sessionid=your_session_id" \
+  -d '{
+    "voucher_code": "SAVE20"
+  }'
+```
+
+### Response
+
+<ResponseField name="success" type="string">
+  Success message confirming voucher application
+</ResponseField>
+
+```json 200 OK
+{
+  "success": "Voucher applied successfully"
+}
+```
+
+### Error Responses
+
+```json 400 Bad Request - Missing Code
+{
+  "voucher_code": "Voucher code is required"
+}
+```
+
+```json 400 Bad Request - Invalid Code
+{
+  "error": "Invalid voucher code"
+}
+```
+
+```json 400 Bad Request - Validation Failed
+{
+  "error": "Voucher has expired"
+}
+```
+
+```json 400 Bad Request - No Eligible Items
+{
+  "error": "No item in your cart is eligible for the voucher offer"
+}
+```
+
+Other possible validation error messages:
+- `"Minimum purchase amount not met"`
+- `"Voucher usage limit reached"`
+- `"Voucher not valid for your account"`
+- `"Voucher is not currently active"`
+
+## Remove Voucher
+
+<api method="DELETE" endpoint="/api/v1/cart/apply/vouchers/" />
+
+Remove the currently applied voucher from the cart.
+
+### Request
+
+No request body required.
+
+```bash cURL
+curl -X DELETE https://api.example.com/api/v1/cart/apply/vouchers/ \
+  -H "Cookie: sessionid=your_session_id"
+```
+
+### Response
+
+<ResponseField name="success" type="string">
+  Success message confirming voucher removal
+</ResponseField>
+
+```json 200 OK
+{
+  "success": "Applied voucher has been successfully removed"
+}
+```
+
+### Error Responses
+
+```json 400 Bad Request - No Voucher Applied
+{
+  "error": "No applied voucher to remove"
+}
+```
+
+## Voucher Validation Rules
+
+Vouchers are validated against multiple criteria:
+
+### Basic Validation
+- Voucher code must exist and be active
+- Voucher must not be expired
+- Customer must meet eligibility requirements
+
+### Purchase Requirements
+- Minimum purchase amount (if configured)
+- Specific products or categories (for product-specific vouchers)
+- Customer group or account restrictions
+
+### Usage Limits
+- Total usage limit across all customers
+- Per-customer usage limit
+- Date range restrictions
+
+## Voucher Types
+
+### Product-Specific Vouchers
+
+Apply discounts to specific products or categories:
+- Only eligible items in cart receive discount
+- Items with existing automatic offers are excluded
+- Discount calculated per eligible item
+
+### Order-Level Vouchers
+
+Apply discount to entire cart subtotal:
+- **Percentage discount**: X% off the subtotal
+- **Fixed amount discount**: $X off the subtotal (capped at subtotal amount)
+
+## Discount Calculation
+
+### Product Vouchers
+
+For each eligible item:
+- **Percentage**: `item_price × quantity × (discount_percentage / 100)`
+- **Fixed amount**: `min(discount_amount, item_total)`
+
+### Order Vouchers
+
+Applied to cart subtotal:
+- **Percentage**: `subtotal × (discount_percentage / 100)`
+- **Fixed amount**: `min(discount_amount, subtotal)`
+
+## Voucher Storage
+
+Applied voucher information is stored in the session:
+
+```json
+{
+  "id": 123,
+  "code": "SAVE20",
+  "offer": "20% Off Electronics",
+  "offer_type": "product",
+  "discount_type": "percentage"
+}
+```
+
+This information is used to:
+- Display voucher details to the user
+- Calculate discounts on eligible items
+- Revalidate voucher during cart refresh
+- Track voucher usage
+
+## Automatic Revalidation
+
+Vouchers are automatically revalidated when:
+- Cart items are added, updated, or removed
+- Cart is refreshed (every 5 minutes)
+- Prices or availability change
+
+If validation fails during refresh:
+- Voucher is automatically removed
+- Customer is notified (implementation-dependent)
+- Cart totals are recalculated without discount
+
+## Interaction with Offers
+
+### Automatic Offers
+Products may have automatic offers applied without vouchers. These take precedence:
+- Items with automatic offers are excluded from product-specific voucher discounts
+- Order-level vouchers apply to the subtotal (including items with offers)
+
+### Offer Priority
+1. Automatic product offers (highest priority)
+2. Product-specific voucher discounts
+3. Order-level voucher discounts
+
+### Multiple Vouchers
+Only one voucher can be applied at a time:
+- Applying a new voucher replaces the existing one
+- No stacking of voucher discounts
+- To change vouchers, remove current voucher and apply new one
+
+## Best Practices
+
+### Code Formatting
+- Voucher codes are automatically converted to uppercase
+- Leading/trailing whitespace is trimmed
+- Use clear, memorable codes (e.g., `SAVE20`, `WELCOME10`)
+
+### Error Handling
+- Always check error messages for specific validation failures
+- Display clear error messages to users
+- Allow users to easily remove and try different codes
+
+### User Experience
+- Show applied voucher details in cart summary
+- Display discount amount clearly
+- Allow easy removal of vouchers
+- Notify users if voucher becomes invalid
+
+## Related Endpoints
+
+- `GET /api/v1/cart/` - View cart with applied discounts
+- `PUT /api/v1/cart/items/` - Update items (triggers discount recalculation)

@@ -1,0 +1,512 @@
+---
+title: Installation Guide
+description: Set up the E-commerce API locally using Docker and Docker Compose for a complete development environment
+---
+
+# Installation Guide
+
+This guide will help you install and run the E-commerce API on your local machine using Docker. The entire stack runs in containers, including the API server, PostgreSQL database, RabbitMQ message broker, and Celery workers.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Docker** (version 20.10 or higher)
+- **Docker Compose** (version 1.29 or higher)
+- **Git** (to clone the repository)
+- At least 2GB of available RAM
+- At least 5GB of available disk space
+
+<Info>
+  Docker Desktop for Mac and Windows includes Docker Compose by default. Linux users may need to install it separately.
+</Info>
+
+## Quick Start
+
+Get up and running in under 5 minutes:
+
+<Steps>
+  <Step title="Clone the Repository">
+    Clone the repository to your local machine:
+
+    ```bash
+    git clone https://github.com/klvxn/ecommerce-API
+    cd ecommerce-API
+    ```
+  </Step>
+
+  <Step title="Configure Environment Variables">
+    Create a `.env` file in the project root with the required configuration:
+
+    ```bash
+    # Database Configuration
+    DB_NAME=ecommerce_db
+    POSTGRES_USER=postgres
+    POSTGRES_PASSWORD=postgres123
+    DB_HOST=db
+    DB_PORT=5432
+
+    # Django Configuration
+    SECRET_KEY=your-secret-key-here-change-in-production
+    DEBUG=True
+
+    # Braintree Payment Configuration
+    BRAINTREE_MERCHANT_ID=your_merchant_id
+    BRAINTREE_PUBLIC_KEY=your_public_key
+    BRAINTREE_PRIVATE_KEY=your_private_key
+    ```
+
+    <Warning>
+      The `SECRET_KEY` should be a long, random string. In production, always use strong, unique values and keep them secret. Never commit `.env` files to version control.
+    </Warning>
+
+    <Tip>
+      For testing payments, you can use Braintree sandbox credentials. Sign up for a free sandbox account at [braintree.com/sandbox](https://www.braintreepayments.com/sandbox).
+    </Tip>
+  </Step>
+
+  <Step title="Build Docker Images">
+    Build the Docker images for all services:
+
+    ```bash
+    docker-compose build
+    ```
+
+    This process will:
+    - Build the API image based on the Dockerfile
+    - Install Python dependencies from requirements.txt
+    - Configure the application environment
+
+    Expected output:
+    ```
+    Building api
+    [+] Building 45.2s (12/12) FINISHED
+    => [internal] load build definition from Dockerfile
+    => [internal] load .dockerignore
+    => [internal] load metadata for docker.io/library/python:3.10
+    ...
+    Successfully built ecommerce_api:v1
+    ```
+
+    <Info>
+      The initial build may take 3-5 minutes as it downloads base images and installs all dependencies.
+    </Info>
+  </Step>
+
+  <Step title="Start the Services">
+    Launch all services using Docker Compose:
+
+    ```bash
+    docker-compose up
+    ```
+
+    This command starts four services:
+    - **db** - PostgreSQL 12 database
+    - **api** - Django REST API server (port 8000)
+    - **rabbitmq** - RabbitMQ message broker (ports 5672, 15672)
+    - **celery** - Celery worker for background tasks
+
+    Wait for the services to start. You should see output similar to:
+    ```
+    db_1       | database system is ready to accept connections
+    rabbitmq_1 | Server startup complete
+    api_1      | Booting worker with pid: 1
+    celery_1   | celery@abc123 ready
+    ```
+
+    <Note>
+      Use `docker-compose up -d` to run services in detached mode (background).
+    </Note>
+  </Step>
+
+  <Step title="Run Database Migrations">
+    In a new terminal window, run the database migrations:
+
+    ```bash
+    docker-compose exec api python manage.py migrate
+    ```
+
+    This creates all necessary database tables and applies the schema.
+
+    Expected output:
+    ```
+    Operations to perform:
+      Apply all migrations: admin, auth, cart, catalogue, contenttypes, customers, orders, payments, sessions, stores, wishlist
+    Running migrations:
+      Applying contenttypes.0001_initial... OK
+      Applying auth.0001_initial... OK
+      ...
+      Applying orders.0040_order_is_active_orderitem_is_active... OK
+    ```
+  </Step>
+
+  <Step title="Create a Superuser (Optional)">
+    Create an admin account to access the Django admin panel:
+
+    ```bash
+    docker-compose exec api python manage.py createsuperuser
+    ```
+
+    Follow the prompts to set email and password.
+
+    <Tip>
+      Access the admin panel at `http://localhost:8000/admin/` to manage products, orders, and users through a web interface.
+    </Tip>
+  </Step>
+
+  <Step title="Verify Installation">
+    Verify the API is running by visiting:
+
+    - **API Root**: http://localhost:8000/
+    - **Swagger Docs**: http://localhost:8000/swagger/
+    - **OpenAPI Schema**: http://localhost:8000/api/v1/openapi/
+    - **Admin Panel**: http://localhost:8000/admin/
+
+    You should see the API root response or Swagger documentation interface.
+  </Step>
+</Steps>
+
+## Docker Compose Architecture
+
+The application uses four interconnected services defined in docker-compose.yml:
+
+### Service Overview
+
+<CodeGroup>
+```yaml docker-compose.yml
+version: '3.9'
+
+services:
+  # PostgreSQL Database
+  db:
+    image: postgres:12-alpine
+    volumes:
+      - postgres_data:/var/lib/postgresql/data/
+    env_file: .env
+    environment:
+      - POSTGRES_DB=${DB_NAME}
+      - POSTGRES_USER=${POSTGRES_USER}
+      - POSTGRES_PASSWORD=${POSTGRES_PASSWORD}
+
+  # Django REST API
+  api:
+    build:
+      context: .
+    image: ecommerce_api:v1
+    container_name: web_api
+    command: gunicorn config.wsgi:application -b 0.0.0.0:8000
+    ports: 
+      - '8000:8000'
+    volumes:
+      - .:/src/api:rw
+    restart: "on-failure"
+    depends_on:
+      - db
+
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3.10-management-alpine
+    volumes:
+        - rabbit_data:/etc/rabbitmq/
+    ports:
+      - '5672:5672'   # AMQP protocol
+      - '15672:15672' # Management UI
+
+  # Celery Worker
+  celery:
+    image: ecommerce_api:v1
+    command: celery -A config worker --loglevel=info -B
+    environment:
+      - CELERY_BROKER_URL=amqp://guest:guest@rabbitmq:5672/
+    depends_on:
+      - api
+      - rabbitmq
+
+volumes:
+  postgres_data:
+  rabbit_data:
+```
+</CodeGroup>
+
+### Service Details
+
+#### Database (db)
+- **Image**: PostgreSQL 12 Alpine (lightweight)
+- **Purpose**: Stores all application data (products, orders, users)
+- **Volume**: `postgres_data` for persistent storage
+- **Configuration**: Uses environment variables from .env file (docker-compose.yml:9-13)
+
+#### API Server (api)
+- **Image**: Built from Dockerfile (custom ecommerce_api:v1)
+- **Purpose**: Django REST Framework API server
+- **Port**: 8000 (mapped to host)
+- **Server**: Gunicorn WSGI server for production-grade performance (docker-compose.yml:20)
+- **Dependencies**: Requires `db` service to be running
+- **Auto-restart**: Restarts automatically on failure
+
+#### RabbitMQ (rabbitmq)
+- **Image**: RabbitMQ 3.10 with management plugin
+- **Purpose**: Message broker for asynchronous task queuing
+- **Ports**: 
+  - 5672: AMQP protocol for Celery communication
+  - 15672: Web-based management UI
+- **Management UI**: Access at http://localhost:15672 (guest/guest)
+
+#### Celery Worker (celery)
+- **Image**: Uses same image as API (ecommerce_api:v1)
+- **Purpose**: Processes background tasks (order exports, email notifications)
+- **Features**: Includes Celery Beat scheduler for periodic tasks (docker-compose.yml:39)
+- **Broker**: Connects to RabbitMQ for task queue
+
+## Key Dependencies
+
+The API relies on these core Python packages (from requirements.txt):
+
+### Core Framework
+- **Django 5.0.6** - Web framework with ORM and admin interface
+- **djangorestframework 3.15.1** - REST API toolkit (requirements.txt:7)
+- **gunicorn 22.0.0** - Production WSGI server (requirements.txt:12)
+- **psycopg2 2.9.9** - PostgreSQL database adapter (requirements.txt:19)
+
+### Authentication & Security
+- **djangorestframework-simplejwt 5.3.1** - JWT authentication (requirements.txt:8)
+- **PyJWT 2.8.0** - JSON Web Token implementation (requirements.txt:21)
+
+### API Features
+- **django-filter 24.2** - Filtering support for querysets (requirements.txt:6)
+- **drf-yasg 1.21.7** - Swagger/OpenAPI documentation (requirements.txt:11)
+- **drf-spectacular 0.27.2** - Alternative OpenAPI schema generator (requirements.txt:9)
+
+### Payment Processing
+- **braintree 4.28.0** - Payment gateway integration (requirements.txt:1)
+
+### Background Tasks
+- **celery 5.4.0** - Distributed task queue (requirements.txt:2)
+
+### Developer Tools
+- **django-debug-toolbar 4.4.2** - Debugging toolbar for Django (requirements.txt:5)
+- **python-dotenv 1.0.1** - Environment variable management (requirements.txt:23)
+
+## Useful Commands
+
+### Starting and Stopping
+
+```bash
+# Start all services in foreground
+docker-compose up
+
+# Start all services in background
+docker-compose up -d
+
+# Stop all services
+docker-compose down
+
+# Stop and remove volumes (deletes database)
+docker-compose down -v
+
+# Restart a specific service
+docker-compose restart api
+```
+
+### Viewing Logs
+
+```bash
+# View logs from all services
+docker-compose logs
+
+# View logs from specific service
+docker-compose logs api
+
+# Follow logs in real-time
+docker-compose logs -f api
+
+# View last 100 lines
+docker-compose logs --tail=100 api
+```
+
+### Database Management
+
+```bash
+# Run migrations
+docker-compose exec api python manage.py migrate
+
+# Create migrations for model changes
+docker-compose exec api python manage.py makemigrations
+
+# Access database shell
+docker-compose exec db psql -U postgres -d ecommerce_db
+
+# Load sample data
+docker-compose exec api python manage.py loaddata fixtures/sample_data.json
+```
+
+### Django Management
+
+```bash
+# Create superuser
+docker-compose exec api python manage.py createsuperuser
+
+# Collect static files
+docker-compose exec api python manage.py collectstatic --no-input
+
+# Open Django shell
+docker-compose exec api python manage.py shell
+
+# Run tests
+docker-compose exec api python manage.py test
+```
+
+### Debugging
+
+```bash
+# Check service status
+docker-compose ps
+
+# View resource usage
+docker stats
+
+# Access API container shell
+docker-compose exec api /bin/bash
+
+# Rebuild specific service
+docker-compose build api
+
+# Rebuild without cache
+docker-compose build --no-cache
+```
+
+## Configuration Details
+
+### Authentication Settings
+
+JWT tokens are configured in config/settings.py:208-214:
+
+- **Access Token Lifetime**: 1 hour
+- **Refresh Token Lifetime**: 3 days
+- **Token Type**: Bearer
+- **Header Name**: Authorization
+
+### API Settings
+
+REST Framework configuration (config/settings.py:167-182):
+
+- **Authentication**: JWT-based (currently commented out for easier testing)
+- **Permissions**: IsAuthenticated by default
+- **Pagination**: Limit-offset with 10 items per page
+- **Filtering**: Django-filter and search backends enabled
+- **Schema**: drf-spectacular for OpenAPI generation
+
+### Database Configuration
+
+The application supports both PostgreSQL and SQLite (config/settings.py:101-114):
+
+- **PG_DB**: PostgreSQL database for production use
+- **default**: SQLite for development/testing
+
+Switch to PostgreSQL by changing the `default` alias in DATABASES.
+
+## Troubleshooting
+
+<AccordionGroup>
+  <Accordion title="Port 8000 already in use">
+    Another application is using port 8000. Either:
+    
+    1. Stop the other application
+    2. Change the port mapping in docker-compose.yml:
+       ```yaml
+       ports:
+         - '8080:8000'  # Use port 8080 instead
+       ```
+    
+    Then access the API at http://localhost:8080
+  </Accordion>
+
+  <Accordion title="Database connection failed">
+    The API can't connect to PostgreSQL. Check:
+    
+    1. Database service is running: `docker-compose ps db`
+    2. Environment variables in .env match docker-compose.yml
+    3. Wait a few seconds - PostgreSQL takes time to initialize
+    
+    View database logs:
+    ```bash
+    docker-compose logs db
+    ```
+  </Accordion>
+
+  <Accordion title="Build fails with dependency errors">
+    Python packages failed to install. Try:
+    
+    1. Rebuild without cache:
+       ```bash
+       docker-compose build --no-cache
+       ```
+    
+    2. Check your internet connection
+    3. Verify requirements.txt is not corrupted
+  </Accordion>
+
+  <Accordion title="Migrations not applying">
+    Database schema updates failing. Common solutions:
+    
+    1. Check database is running: `docker-compose ps db`
+    2. Reset database (WARNING: deletes all data):
+       ```bash
+       docker-compose down -v
+       docker-compose up -d db
+       docker-compose exec api python manage.py migrate
+       ```
+    
+    3. Check for migration conflicts:
+       ```bash
+       docker-compose exec api python manage.py showmigrations
+       ```
+  </Accordion>
+
+  <Accordion title="RabbitMQ connection refused">
+    Celery can't connect to RabbitMQ:
+    
+    1. Verify RabbitMQ is running: `docker-compose ps rabbitmq`
+    2. Check RabbitMQ logs: `docker-compose logs rabbitmq`
+    3. Wait 10-15 seconds after starting for RabbitMQ to fully initialize
+    4. Restart Celery: `docker-compose restart celery`
+  </Accordion>
+
+  <Accordion title="Permission denied errors">
+    File permission issues in Docker:
+    
+    1. On Linux, Docker may create files as root. Fix with:
+       ```bash
+       sudo chown -R $USER:$USER .
+       ```
+    
+    2. Check volume permissions in docker-compose.yml
+  </Accordion>
+</AccordionGroup>
+
+## Next Steps
+
+<CardGroup cols={2}>
+  <Card title="Quickstart Tutorial" icon="rocket" href="/quickstart">
+    Make your first API call and get a working response
+  </Card>
+  <Card title="Interactive Documentation" icon="browser" href="http://localhost:8000/swagger/">
+    Explore and test API endpoints in Swagger UI
+  </Card>
+  <Card title="Authentication Guide" icon="lock" href="/authentication">
+    Learn about JWT authentication and token management
+  </Card>
+  <Card title="API Reference" icon="book" href="/api-reference">
+    Detailed documentation for all endpoints
+  </Card>
+</CardGroup>
+
+<Tip>
+  For production deployment, remember to:
+  - Set `DEBUG=False` in .env
+  - Use strong, unique SECRET_KEY
+  - Configure proper database backups
+  - Set up SSL/TLS certificates
+  - Use environment-specific Braintree credentials
+  - Configure proper logging and monitoring
+</Tip>
